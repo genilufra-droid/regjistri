@@ -414,7 +414,7 @@ const Store = {
   replace(d) {
     this.data = {
       products: d.products || [], suppliers: d.suppliers || [], purchases: d.purchases || [],
-      meta: Object.assign({ demo: false, lastBuyer: '' }, d.meta || {})
+      meta: Object.assign({ demo: false, lastBuyer: '', seeded: (this.data.meta || {}).seeded === true }, d.meta || {})
     };
     Net.queueFull();
   }
@@ -451,6 +451,7 @@ const Net = {
       purchases: (pu.data || []).map(r => Object.assign(this.clean(r), { attachments: r.attachments || [] })),
       meta: Object.assign({ demo: false, lastBuyer: '' }, (mt && mt.data && mt.data.value) || {})
     };
+    this.metaExists = !!(mt && mt.data);     // a është përdorur ndonjëherë kjo bazë?
     this.snapshot();
   },
   queue() { this.dirty = true; this.kick(); },
@@ -1173,7 +1174,7 @@ Object.keys(PICK).forEach(k => {
 ['fpPrice', 'fpQty'].forEach(i => $('#' + i).addEventListener('input', () => { touched = true; }));
 $('#fpProduct').addEventListener('input', productHint);
 $('#importFile').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
-$('#demoClear').addEventListener('click', () => { Files.clear().catch(() => {}); Store.replace({}); renderAll(); toast('Gati. Regjistro blerjen e parë.'); });
+$('#demoClear').addEventListener('click', () => { Files.clear().catch(() => {}); Store.replace({ meta: { demo: false, lastBuyer: '', seeded: true } }); renderAll(); toast('Gati. Regjistro blerjen e parë.'); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('#drawer').hidden && !document.querySelector('dialog[open]')) closeSupplier();
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.querySelector('dialog[open]')) { e.preventDefault(); if (state.tab !== 'search') setTab('search'); $('#q').focus(); }
@@ -1191,8 +1192,8 @@ document.addEventListener('keydown', e => {
   try {
     await Net.pull();
     const empty = !Store.data.products.length && !Store.data.suppliers.length && !Store.data.purchases.length;
-    if (empty && !Store.data.meta.seeded) {
-      const d = demoData(); d.meta.seeded = true; Store.replace(d);   // mbushja e parë e bazës
+    if (empty && !Store.data.meta.seeded && !Net.metaExists) {
+      const d = demoData(); d.meta.seeded = true; Store.replace(d);   // vetëm në bazë krejt të re
     }
     renderAll();
     Net.chip('Online · live', 'ok');

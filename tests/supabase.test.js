@@ -89,7 +89,7 @@ const els = new Map();
 const El = (id = '') => ({
   id, innerHTML: '', textContent: '', value: '', hidden: false, dataset: {}, style: {}, files: [], attrs: {},
   classList: { add() {}, remove() {}, toggle() {}, contains: () => false },
-  addEventListener() {}, focus() {}, select() {}, blur() {}, click() {}, scrollIntoView() {},
+  addEventListener(ev, fn) { (this._h = this._h || {})[ev] = fn; }, focus() {}, select() {}, blur() {}, click() {}, scrollIntoView() {},
   showModal() {}, close() {}, setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
   querySelector: () => El(), querySelectorAll: () => [], closest: () => null, appendChild() {}, remove() {}
 });
@@ -113,6 +113,7 @@ global.__info = (n, v) => results.push(['ℹ️', n, v]);
 global.__A = assert; global.__W = ms => new Promise(r => setTimeout(r, ms));
 global.__db = DB; global.__storage = STORAGE; global.__log = LOG;
 global.__fail = v => { FAIL = v; };
+global.__click = id => { const el = byId(id); if (!el._h || !el._h.click) throw new Error('butoni ' + id + ' s\'ka dëgjues'); return el._h.click({ preventDefault() {} }); };
 global.__done = () => {
   console.log('\n  TESTIM I VERSIONIT SUPABASE (bazë e rreme në kujtesë)\n' + '─'.repeat(70));
   console.log('  ' + results.map(r => `${r[0]}  ${r[1].padEnd(52, '.')} ${r[2]}`).join('\n  '));
@@ -232,7 +233,38 @@ const TESTS = `
     A.ok(!__db.products.some(p => /^TEST /.test(p.name)), 'mbetën artikuj testi');
   });
 
-  __info('Gjendja e bazës', __db.purchases.length + ' blerje · ' + __db.suppliers.length + ' furnitorë · ' + __db.products.length + ' artikuj');
+  const gj = __db.purchases.length + ' blerje · ' + __db.suppliers.length + ' furnitorë · ' + __db.products.length + ' artikuj';
+
+  await __t('Pas "Fshiji dhe fillo me të dhënat e tua" baza mbetet bosh', async () => {
+    __click('demoClear');                       // klikim i vërtetë i butonit
+    await W(700);
+    A.strictEqual(__db.purchases.length, 0, 'mbetën blerje në bazë');
+    A.strictEqual(__db.products.length, 0, 'mbetën artikuj në bazë');
+    await Net.pull();                           // njësoj si ringarkim i faqes
+    const bosh = !Store.data.products.length && !Store.data.suppliers.length && !Store.data.purchases.length;
+    const dotMbushej = bosh && !Store.data.meta.seeded && !Net.metaExists;
+    A.ok(!dotMbushej, 'faqja do i rikthente shembujt pas ringarkimit');
+    A.strictEqual(__db.purchases.length, 0, 'shembujt u rikthyen vetvetiu');
+  });
+
+  await __t('Fshirja e gjithçkaje (Rregullimet) nuk i kthen shembujt', async () => {
+    Store.replace({ products: [{ id: 'p1', name: 'Vaj motori', unit: 'litër', updatedAt: 'x' }] });
+    await W(700);
+    Store.replace({});                          // "Fshi gjithçka"
+    await W(700);
+    await Net.pull();
+    A.strictEqual(__db.purchases.length + __db.products.length, 0, 'baza nuk u zbraz');
+    A.ok(Store.data.meta.seeded === true, 'u humb shenja që baza është përdorur');
+  });
+
+  await __t('Bazë krejt e re (pa asnjë rresht meta) mbushet me shembuj', async () => {
+    __db.meta.length = 0; __db.products.length = 0; __db.suppliers.length = 0; __db.purchases.length = 0;
+    await Net.pull();
+    const bosh = !Store.data.products.length && !Store.data.suppliers.length && !Store.data.purchases.length;
+    A.ok(bosh && !Store.data.meta.seeded && !Net.metaExists, 'baza e re nuk do të mbushej');
+  });
+
+  __info('Gjendja e bazës', gj);
   __info('Trafiku', __log.selects + ' lexime · ' + __log.upserts + ' shkrime · ' + __log.deletes + ' fshirje · ' + __log.uploads + ' ngarkime');
   __done();
 })();

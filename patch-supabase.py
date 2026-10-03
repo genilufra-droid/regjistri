@@ -57,7 +57,7 @@ const Store = {
   replace(d) {
     this.data = {
       products: d.products || [], suppliers: d.suppliers || [], purchases: d.purchases || [],
-      meta: Object.assign({ demo: false, lastBuyer: '' }, d.meta || {})
+      meta: Object.assign({ demo: false, lastBuyer: '', seeded: (this.data.meta || {}).seeded === true }, d.meta || {})
     };
     Net.queueFull();
   }
@@ -94,6 +94,7 @@ const Net = {
       purchases: (pu.data || []).map(r => Object.assign(this.clean(r), { attachments: r.attachments || [] })),
       meta: Object.assign({ demo: false, lastBuyer: '' }, (mt && mt.data && mt.data.value) || {})
     };
+    this.metaExists = !!(mt && mt.data);     // a është përdorur ndonjëherë kjo bazë?
     this.snapshot();
   },
   queue() { this.dirty = true; this.kick(); },
@@ -225,8 +226,8 @@ new_init = r'''/* ---------- Nisja (Supabase) ---------- */
   try {
     await Net.pull();
     const empty = !Store.data.products.length && !Store.data.suppliers.length && !Store.data.purchases.length;
-    if (empty && !Store.data.meta.seeded) {
-      const d = demoData(); d.meta.seeded = true; Store.replace(d);   // mbushja e parë e bazës
+    if (empty && !Store.data.meta.seeded && !Net.metaExists) {
+      const d = demoData(); d.meta.seeded = true; Store.replace(d);   // vetëm në bazë krejt të re
     }
     renderAll();
     Net.chip('Online · live', 'ok');
@@ -249,6 +250,18 @@ html = html.replace(
     'çdo ndryshim shfaqet menjëherë te të tjerët. Skedarët e faturave (foto, PDF, ZIP) ruhen në Supabase Storage dhe nuk futen brenda JSON-it apo CSV-së.')
 html = html.replace('Heq të gjitha blerjet, furnitorët dhe produktet nga ky shfletues.',
                     'Heq të gjitha blerjet, furnitorët dhe produktet nga baza — për të gjithë stafin.')
+
+# butoni "Fshiji dhe fillo me të dhënat e tua" + fshirja e plotë duhet ta shënojnë
+# bazën si të përdorur, që shembujt të mos rikthehen në ringarkimin tjetër.
+_old_clear = "Files.clear().catch(() => {}); Store.replace({}); renderAll(); toast('Gati. Regjistro blerjen e parë.');"
+_new_clear = "Files.clear().catch(() => {}); Store.replace({ meta: { demo: false, lastBuyer: '', seeded: true } }); renderAll(); toast('Gati. Regjistro blerjen e parë.');"
+assert html.count(_old_clear) == 1, 'nuk u gjet butoni i pastrimit'
+html = html.replace(_old_clear, _new_clear)
+
+_old_wipe = "if (confirm('Të gjitha të dhënat do të fshihen. Je i sigurt?'))"
+if _old_wipe in html:
+    html = html.replace("Store.replace({}); closeSupplier(); renderAll(); toast('Të dhënat u fshinë');",
+                        "Store.replace({ meta: { demo: false, lastBuyer: '', seeded: true } }); closeSupplier(); renderAll(); toast('Të dhënat u fshinë');")
 
 for needle in ['supabase-js@2', 'const SB =', "SB.storage.from(BUCKET)", 'id="netChip"', 'async function boot()']:
     assert needle in html, 'Patch dështoi te: ' + needle
