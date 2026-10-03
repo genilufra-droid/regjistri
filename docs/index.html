@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="sq">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Regjistri i blerjeve · BioBes</title>
+<link rel="icon" href="https://biobes.al/assets/img/favicon/150x150.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<!-- ====================== KONFIGURIMI I SUPABASE ======================
+     Këtu ngjit dy vlerat nga Supabase → Settings → API.
+     Çelësi "anon" është publik me qëllim: stafi punon pa llogari.
+     ================================================================== -->
+<script>
+  window.SUPABASE_URL      = 'https://vikcvnioouxnchwrnahk.supabase.co';
+  window.SUPABASE_ANON_KEY = 'sb_publishable_WY0dvvMh-ZBdpSwEXMN8JQ_I5iyTZmN';
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+:root{
+  --bg:#ECEFE6; --paper:#F8F9F5; --ink:#17261B; --muted:#5B6A5C; --line:#CAD2C4;
+  --accent:#2E6B34; --accent-ink:#FFFFFF; --signal:#F2B705; --danger:#A32A1E;
+  --radius:6px;
+  --font:'Schibsted Grotesk',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-padding-top:80px}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:16px;line-height:1.45;-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--signal);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:var(--paper);color:var(--ink);border-bottom:4px solid var(--accent);box-shadow:0 1px 0 var(--line)}
+.top-in{max-width:1040px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;margin-right:auto;min-width:0}
+.brand img{height:38px;width:auto;display:block}
+.wm{font-size:22px;font-weight:700;color:var(--accent)}
+.bt{padding-left:12px;border-left:2px solid var(--line);font-weight:600;font-size:17px;letter-spacing:-.01em}
+.tabs{display:flex;gap:2px}
+.tab{background:none;border:0;color:var(--muted);padding:8px 12px;border-radius:var(--radius);font-weight:500}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--accent);background:rgba(46,107,52,.12);font-weight:650}
+.chip{font-size:13px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 10px;white-space:nowrap}
+
+main{max-width:1040px;margin:0 auto;padding:28px 20px 80px}
+.view[hidden]{display:none}
+.ft{margin-top:40px;color:var(--muted);font-size:13px;text-align:center}
+.demo-strip{background:var(--signal);color:#201800;padding:8px 20px;font-size:14px;text-align:center}
+.demo-strip button{background:none;border:0;text-decoration:underline;font-weight:600;padding:0 4px}
+
+/* search */
+.search{position:relative}
+.search svg{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:var(--muted)}
+#q{width:100%;font-size:clamp(22px,4.4vw,32px);font-weight:600;letter-spacing:-.01em;padding:18px 16px 18px 54px;background:var(--paper);border:2px solid var(--ink);border-radius:var(--radius)}
+#q::placeholder{color:#8A9A95;font-weight:500}
+.hint{color:var(--muted);font-size:14px;margin:10px 2px 26px}
+.sec-title{font-size:15px;font-weight:600;color:var(--muted);margin:30px 0 10px}
+
+/* product ledger */
+.prod{background:var(--paper);border-left:5px solid var(--accent);margin-bottom:22px;border-radius:0 var(--radius) var(--radius) 0;box-shadow:0 0 0 1px var(--line)}
+.prod-h{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;padding:16px 18px 6px}
+.prod-h h2{margin:0;font-size:22px;letter-spacing:-.01em;font-weight:650}
+.prod-h .meta{color:var(--muted);font-size:14px;margin-right:auto}
+.rows{padding:4px 18px 10px}
+.row,.rowh{display:grid;grid-template-columns:minmax(190px,1.7fr) 120px 130px 90px 110px 110px;gap:4px 14px;padding:12px 0;border-top:1px solid var(--line);align-items:start}
+.rowh{border-top:0;padding:6px 0;color:var(--muted);font-size:13px;font-weight:500}
+.row:first-of-type{border-top:0}
+.row .sub{display:block;color:var(--muted);font-size:13px}
+.price{font-weight:650}
+.tag{display:inline-block;background:var(--signal);color:#201800;font-size:12px;font-weight:600;padding:1px 7px;border-radius:99px;margin-left:6px;vertical-align:1px}
+.row .c::before{content:attr(data-l);display:none;color:var(--muted);font-size:12px}
+.linkbtn{background:none;border:0;padding:0;text-align:left;font-weight:600;color:var(--accent);text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.linkbtn:hover{color:var(--ink)}
+.foot{padding:4px 18px 16px;display:flex;gap:16px;flex-wrap:wrap}
+mark{background:var(--signal);color:inherit;border-radius:2px;padding:0 1px}
+.att{display:flex;align-items:center;gap:4px;max-width:160px;background:none;border:0;padding:2px 0;color:var(--accent);font-size:14px;font-weight:600;text-decoration:underline;text-underline-offset:3px;text-align:left}
+.att:hover{color:var(--ink)}
+.sortbtn{background:none;border:0;padding:0;font:inherit;color:inherit;font-weight:500;white-space:nowrap}
+.sortbtn:hover{color:var(--ink)}
+.addbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0;padding:14px 16px;background:var(--paper);border:1.5px dashed var(--accent);border-radius:var(--radius)}
+.addbar span{color:var(--muted);font-size:14px;margin-right:auto}
+.pk.add{background:var(--signal);border-left-color:#201800;color:#201800}
+.pk.add:hover{background:#E0A800}
+.pk{display:block;width:100%;text-align:left;background:#E8F2E0;border:0;border-left:3px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;padding:7px 10px;margin-top:3px;font-weight:600}
+.pk:hover{background:#DCEBD1}
+.pk small{font-weight:400;margin:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.cb{background:none;border:1px solid var(--line);border-radius:99px;padding:2px 10px;font-size:13px}
+.cb:hover{border-color:var(--ink)}
+.seg{display:flex}
+.seg button{flex:1;background:var(--paper);border:1.5px solid var(--line);padding:9px 12px;font-weight:600}
+.seg button:first-child{border-radius:6px 0 0 6px}
+.seg button:last-child{border-radius:0 6px 6px 0;border-left:0}
+.seg button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+.rebuy{margin-top:6px;background:none;border:1.5px solid var(--accent);color:var(--accent);border-radius:var(--radius);padding:2px 9px;font-size:13px;font-weight:600}
+.rebuy:hover{background:var(--accent);color:#fff}
+.auto{background:#E8F2E0;border-left:4px solid var(--accent);padding:10px 12px;margin:0 0 14px;font-size:14px;border-radius:0 var(--radius) var(--radius) 0}
+.auto[hidden]{display:none}
+.att span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.att svg{flex:none}
+.attrow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line);font-size:14px}
+.attrow span{overflow-wrap:anywhere}
+input[type=file].field{padding:8px}
+.empty{background:var(--paper);border:1px dashed var(--line);border-radius:var(--radius);padding:28px;text-align:center;color:var(--muted)}
+.empty strong{display:block;color:var(--ink);font-size:18px;margin-bottom:4px}
+
+/* buttons */
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:var(--radius);padding:10px 16px;font-weight:600}
+.btn:hover{background:#235428}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn.ghost:hover{background:rgba(20,35,31,.07)}
+.btn.danger{background:transparent;color:var(--danger);box-shadow:inset 0 0 0 1.5px var(--danger)}
+.btn.sm{padding:6px 11px;font-size:14px}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.bar h1{margin:0;font-size:24px;letter-spacing:-.01em;margin-right:auto}
+.field{background:var(--paper);border:1.5px solid var(--line);border-radius:var(--radius);padding:9px 12px;min-width:0}
+.field:focus{border-color:var(--ink)}
+
+/* tables */
+.tablewrap{overflow-x:auto;background:var(--paper);border-radius:var(--radius);box-shadow:0 0 0 1px var(--line)}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:15px}
+th{text-align:left;font-weight:500;color:var(--muted);font-size:13px;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.act{white-space:nowrap;text-align:right}
+
+.suplist{display:grid;gap:0;background:var(--paper);border-radius:var(--radius);box-shadow:0 0 0 1px var(--line)}
+.suprow{display:grid;grid-template-columns:1fr auto;gap:2px 16px;padding:14px 18px;border-top:1px solid var(--line);width:100%;background:none;border-left:0;border-right:0;border-bottom:0;text-align:left}
+.suprow:first-child{border-top:0}
+.suprow:hover{background:#EEF1EA}
+.suprow .n{font-weight:600}
+.suprow .s{color:var(--muted);font-size:14px}
+.suprow .r{text-align:right;color:var(--muted);font-size:14px}
+
+/* drawer */
+.scrim{position:fixed;inset:0;background:rgba(10,20,17,.45);z-index:40}
+.scrim[hidden],.drawer[hidden]{display:none}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(460px,100%);background:var(--paper);z-index:41;overflow-y:auto;box-shadow:-8px 0 30px rgba(0,0,0,.25);animation:slide .18s ease-out}
+@keyframes slide{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+.dh{position:sticky;top:0;background:var(--ink);color:#fff;padding:18px 20px;display:flex;gap:12px;align-items:flex-start}
+.dh h2{margin:0;font-size:22px;letter-spacing:-.01em;margin-right:auto}
+.dh .city{color:#BFD0CA;font-size:14px}
+.x{background:none;border:0;color:#fff;font-size:26px;line-height:1;padding:0 4px}
+.db{padding:18px 20px 40px}
+dl.info{margin:0 0 16px;display:grid;grid-template-columns:96px 1fr;gap:10px 12px}
+dl.info dt{color:var(--muted);font-size:14px;padding-top:1px}
+dl.info dd{margin:0;word-break:break-word}
+.goods{margin:0;padding:0;list-style:none}
+.goods li{padding:12px 0;border-top:1px solid var(--line)}
+.goods .s{display:block;color:var(--muted);font-size:14px}
+.stat{color:var(--muted);font-size:14px;margin:0 0 18px}
+
+/* dialogs */
+dialog{border:0;border-radius:var(--radius);padding:0;width:min(560px,calc(100% - 24px));max-height:calc(100% - 24px);background:var(--paper);color:var(--ink);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog::backdrop{background:rgba(10,20,17,.5)}
+dialog form{padding:22px}
+dialog h2{margin:0 0 16px;font-size:22px;letter-spacing:-.01em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fl{display:block;margin-bottom:12px}
+.fl>span{display:block;font-size:14px;font-weight:500;margin-bottom:4px}
+.fl .field{width:100%}
+.fl small{display:block;color:var(--muted);font-size:13px;margin-top:4px}
+.newsup{border-left:4px solid var(--signal);padding:4px 0 0 14px;margin:0 0 12px}
+.newsup[hidden]{display:none}
+.newsup p{margin:4px 0 10px;font-size:14px;color:var(--muted)}
+.actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
+.err{color:var(--danger);font-size:14px;min-height:20px;margin-top:6px}
+
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--radius);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:15px}
+.toast[hidden]{display:none}
+.card{background:var(--paper);box-shadow:0 0 0 1px var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
+.card h3{margin:0 0 6px;font-size:17px}
+.card p{margin:0 0 12px;color:var(--muted);font-size:15px}
+.card .bar{margin:0}
+
+@media (max-width:760px){
+  main{padding:20px 14px 80px}
+  .top-in{padding:8px 14px}
+  .chip{display:none}
+  .rowh{display:none}
+  .row{grid-template-columns:1fr 1fr;gap:10px 12px}
+  .row .c-sup{grid-column:1 / -1}
+  .row .c::before{display:block}
+  .row .c-sup::before{display:none}
+  .rows{padding:4px 14px 8px}
+  .prod-h{padding:14px 14px 4px}
+  .foot{padding:4px 14px 14px}
+  .grid2{grid-template-columns:1fr}
+  dl.info{grid-template-columns:1fr;gap:2px}
+  dl.info dd{margin-bottom:10px}
+}
+@media (prefers-reduced-motion:reduce){.drawer{animation:none}}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><img src="https://biobes.al/assets/img/biobes-logo.png" alt="BioBes" onerror="this.replaceWith(Object.assign(document.createElement('b'),{textContent:'BioBes',className:'wm'}))"><span class="bt">Regjistri i blerjeve</span></div>
+    <nav class="tabs" role="tablist" aria-label="Seksionet">
+      <button class="tab" role="tab" data-tab="search" aria-selected="true">Kërko</button>
+      <button class="tab" role="tab" data-tab="purchases" aria-selected="false">Blerjet</button>
+      <button class="tab" role="tab" data-tab="products" aria-selected="false">Artikujt</button>
+      <button class="tab" role="tab" data-tab="suppliers" aria-selected="false">Furnitorët</button>
+      <button class="tab" role="tab" data-tab="data" aria-selected="false">Të dhënat</button>
+    </nav>
+    <span class="chip" id="netChip" title="Të dhënat rrinë në Supabase dhe i sheh i gjithë stafi. Çdo ndryshim shfaqet menjëherë te të tjerët.">Po lidhet…</span>
+  </div>
+</header>
+<div id="demoStrip" class="demo-strip" hidden>Po shfaqen të dhëna shembull. <button type="button" id="demoClear">Fshiji dhe fillo me të dhënat e tua</button></div>
+
+<main>
+  <!-- KËRKO -->
+  <section class="view" id="v-search">
+    <div class="search">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M20 20l-4.8-4.8"/></svg>
+      <input id="q" type="search" autocomplete="off" spellcheck="false" placeholder="Çfarë duhet të blejmë? p.sh. kuzhinetë" aria-label="Kërko produkt, furnitor ose faturë">
+    </div>
+    <p class="hint">Kërko sipas produktit, furnitorit ose numrit të faturës. Mund të shkruash pa shenja: “kuzhinete” gjen “kuzhinetë”. Shtyp <b>/</b> për të kërkuar.</p>
+    <div id="results"></div>
+  </section>
+
+  <!-- BLERJET -->
+  <section class="view" id="v-purchases" hidden>
+    <div class="bar">
+      <h1>Të gjitha blerjet</h1>
+      <input id="pFilter" class="field" type="search" placeholder="Filtro blerjet…" aria-label="Filtro blerjet">
+      <button class="btn" data-act="new-purchase">Regjistro blerje</button>
+    </div>
+    <div id="purchaseTable"></div>
+  </section>
+
+  <!-- ARTIKUJT -->
+  <section class="view" id="v-products" hidden>
+    <div class="bar">
+      <h1>Artikujt</h1>
+      <input id="prFilter" class="field" type="search" placeholder="Filtro artikujt…" aria-label="Filtro artikujt">
+      <button class="btn" data-act="new-product">Artikull i ri</button>
+    </div>
+    <div id="productList"></div>
+  </section>
+
+  <!-- FURNITORËT -->
+  <section class="view" id="v-suppliers" hidden>
+    <div class="bar">
+      <h1>Furnitorët</h1>
+      <input id="sFilter" class="field" type="search" placeholder="Filtro furnitorët…" aria-label="Filtro furnitorët">
+      <button class="btn" data-act="new-supplier">Furnitor i ri</button>
+    </div>
+    <div id="supplierList"></div>
+  </section>
+
+  <!-- TË DHËNAT -->
+  <section class="view" id="v-data" hidden>
+    <div class="bar"><h1>Të dhënat</h1></div>
+    <div class="card">
+      <h3>Kopje rezervë</h3>
+      <p>Shkarko gjithçka si skedar ose rikthe një kopje të mëparshme. Të dhënat rrinë në bazën e përbashkët (Supabase) dhe i sheh i gjithë stafi; çdo ndryshim shfaqet menjëherë te të tjerët. Skedarët e faturave (foto, PDF, ZIP) ruhen në Supabase Storage dhe nuk futen brenda JSON-it apo CSV-së.</p>
+      <div class="bar">
+        <button class="btn ghost sm" data-act="export-json">Shkarko JSON</button>
+        <button class="btn ghost sm" data-act="export-csv">Shkarko CSV (Excel)</button>
+        <button class="btn ghost sm" data-act="import-json">Ngarko JSON</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Të dhëna shembull</h3>
+      <p>Ngarko shembuj për ta provuar sistemin. Kjo zëvendëson të dhënat aktuale.</p>
+      <button class="btn ghost sm" data-act="load-demo">Ngarko shembujt</button>
+    </div>
+    <div class="card">
+      <h3>Fshi gjithçka</h3>
+      <p>Heq të gjitha blerjet, furnitorët dhe produktet nga baza — për të gjithë stafin.</p>
+      <button class="btn danger sm" data-act="clear-all">Fshi të gjitha</button>
+    </div>
+  </section>
+  <footer class="ft">BioBes shpk · Sopez 53 Gradishtë, Divjakë · +355 69 40 45 444 · info@biobes.al</footer>
+</main>
+
+<!-- supplier drawer -->
+<div class="scrim" id="scrim" hidden></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden></aside>
+
+<!-- purchase dialog -->
+<dialog id="dPurchase">
+  <form id="fPurchase" novalidate>
+    <h2 id="dpTitle">Regjistro blerje</h2>
+    <div class="auto" id="fpAuto" hidden></div>
+    <label class="fl"><span>Produkti</span>
+      <input class="field" id="fpProduct" autocomplete="off" required placeholder="p.sh. Kuzhinetë">
+      <small id="fpHint"></small>
+      <div id="pkProduct"></div>
+    </label>
+    <label class="fl"><span>Furnitori</span>
+      <input class="field" id="fpSupplier" autocomplete="off" required placeholder="Shkruaj emrin e furnitorit">
+      <div id="pkSupplier"></div>
+    </label>
+    <div class="newsup" id="newSup" hidden>
+      <p>Furnitor i ri. Plotëso kontaktin që ta gjejmë herën tjetër.</p>
+      <div class="grid2">
+        <label class="fl"><span>Telefoni</span><input class="field" id="fpSupPhone" inputmode="tel" placeholder="+355 69 …"></label>
+        <label class="fl"><span>Qyteti</span><input class="field" id="fpSupCity"></label>
+      </div>
+      <label class="fl"><span>Adresa</span><input class="field" id="fpSupAddr"></label>
+      <label class="fl"><span>Lokacioni në hartë</span><input class="field" id="fpSupLoc" placeholder="Link nga Google Maps ose koordinata"></label>
+    </div>
+    <div class="grid2">
+      <label class="fl"><span>Data e blerjes</span><input class="field" type="date" id="fpDate" required></label>
+      <label class="fl"><span>Fatura nr.</span><input class="field" id="fpInvoice" placeholder="p.sh. F-2026-0412"></label>
+    </div>
+    <div class="fl">
+      <span>Fatura e skanuar (nuk është e detyrueshme)</span>
+      <div id="fpAtts"></div>
+      <input class="field" type="file" id="fpFiles" multiple aria-label="Ngarko faturën" accept="image/*,application/pdf,.pdf,.zip,application/zip,application/x-zip-compressed">
+      <small>Foto, PDF ose ZIP. Deri në 15 MB për skedar.</small>
+    </div>
+    <div class="grid2">
+      <label class="fl"><span>Sasia</span><input class="field num" id="fpQty" type="number" min="0" step="any" value="1" inputmode="decimal"></label>
+      <div class="fl"><span>Njësia</span><input class="field" id="fpUnit" value="copë" autocomplete="off"><div class="chips" id="unitChips"><button type="button" class="cb" data-unit="copë">copë</button><button type="button" class="cb" data-unit="set">set</button><button type="button" class="cb" data-unit="kg">kg</button><button type="button" class="cb" data-unit="m">m</button><button type="button" class="cb" data-unit="m²">m²</button><button type="button" class="cb" data-unit="litër">litër</button><button type="button" class="cb" data-unit="kuti">kuti</button><button type="button" class="cb" data-unit="thes">thes</button><button type="button" class="cb" data-unit="kovë">kovë</button></div></div>
+    </div>
+    <div class="grid2">
+      <label class="fl"><span>Çmimi për njësi</span><input class="field num" id="fpPrice" type="number" min="0" step="any" inputmode="decimal" required></label>
+      <div class="fl"><span>Monedha</span><input type="hidden" id="fpCur" value="ALL"><div class="seg" id="curSeg"><button type="button" data-cur="ALL" aria-pressed="true">Lekë</button><button type="button" data-cur="EUR" aria-pressed="false">Euro</button></div></div>
+    </div>
+    <label class="fl"><span>Personi që e bleu</span><input class="field" id="fpBuyer" autocomplete="off" required><div id="pkBuyer"></div></label>
+    <label class="fl"><span>Shënim (nuk është i detyrueshëm)</span><input class="field" id="fpNote"></label>
+    <div class="err" id="fpErr" role="alert"></div>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close="dPurchase">Anulo</button>
+      <button type="submit" class="btn">Ruaj blerjen</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- product dialog -->
+<dialog id="dProduct">
+  <form id="fProduct" novalidate>
+    <h2 id="dprTitle">Artikull i ri</h2>
+    <label class="fl"><span>Emri i artikullit</span><input class="field" id="fprName" autocomplete="off" required></label>
+    <div class="fl"><span>Njësia</span><input class="field" id="fprUnit" value="copë" autocomplete="off">
+      <div class="chips"><button type="button" class="cb" data-prunit="copë">copë</button><button type="button" class="cb" data-prunit="set">set</button><button type="button" class="cb" data-prunit="kg">kg</button><button type="button" class="cb" data-prunit="m">m</button><button type="button" class="cb" data-prunit="m²">m²</button><button type="button" class="cb" data-prunit="litër">litër</button><button type="button" class="cb" data-prunit="kuti">kuti</button><button type="button" class="cb" data-prunit="thes">thes</button><button type="button" class="cb" data-prunit="kovë">kovë</button></div></div>
+    <div class="err" id="fprErr" role="alert"></div>
+    <div class="actions">
+      <button type="button" class="btn danger" id="fprDelete" hidden>Fshi artikullin</button>
+      <button type="button" class="btn ghost" data-close="dProduct">Anulo</button>
+      <button type="submit" class="btn">Ruaj artikullin</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- supplier dialog -->
+<dialog id="dSupplier">
+  <form id="fSupplier" novalidate>
+    <h2 id="dsTitle">Furnitor i ri</h2>
+    <label class="fl"><span>Emri i furnitorit</span><input class="field" id="fsName" required></label>
+    <div class="grid2">
+      <label class="fl"><span>Telefoni</span><input class="field" id="fsPhone" inputmode="tel" placeholder="+355 69 …"></label>
+      <label class="fl"><span>Qyteti</span><input class="field" id="fsCity"></label>
+    </div>
+    <label class="fl"><span>Adresa</span><input class="field" id="fsAddr"></label>
+    <label class="fl"><span>Lokacioni në hartë</span><input class="field" id="fsLoc" placeholder="Link nga Google Maps ose koordinata (41.3275, 19.8187)">
+      <small>Në Google Maps shtyp gjatë mbi vendin dhe kopjo koordinatat ose linkun.</small></label>
+    <label class="fl"><span>Shënim</span><input class="field" id="fsNote"></label>
+    <div class="err" id="fsErr" role="alert"></div>
+    <div class="actions">
+      <button type="button" class="btn danger" id="fsDelete" hidden>Fshi furnitorin</button>
+      <button type="button" class="btn ghost" data-close="dSupplier">Anulo</button>
+      <button type="submit" class="btn">Ruaj furnitorin</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<script>
+'use strict';
+/* =====================================================================
+   REGJISTRI I BLERJEVE — prototip (single file)
+   Të gjitha të dhënat kalojnë nga objekti Store. Kur kalojmë online,
+   zëvendësojmë vetëm Store (load/save) me thirrje API + sinkronizim;
+   UI mbetet e njëjta. Çdo regjistër ka id unike dhe updatedAt.
+   ===================================================================== */
+
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2, 10));
+const nowISO = () => new Date().toISOString();
+const todayISO = () => { const d = new Date(); return new Date(d - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10); };
+
+/* Normalizim: heq shenjat (ë→e, ç→c) që "kuzhinete" të gjejë "Kuzhinetë" */
+const baseChar = ch => ch.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const norm = s => String(s || '').split('').map(baseChar).join('').trim();
+
+/* ---------- Store (Supabase: databazë e përbashkët) ----------
+   Ndërfaqja mbetet e njëjtë (Store.data / save / replace). Ndryshimet
+   shkojnë te tabelat në Supabase dhe kthehen live te gjithë stafi. */
+const SB = (() => {
+  try { return window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, { realtime: { params: { eventsPerSecond: 10 } } }); }
+  catch (e) { console.error('Supabase nuk u konfigurua:', e); return null; }
+})();
+const TABLES = ['products', 'suppliers', 'purchases'];
+
+const Store = {
+  data: { products: [], suppliers: [], purchases: [], meta: { demo: false, lastBuyer: '' } },
+  memoryOnly: false,
+  load() { return true; },                    // të dhënat vijnë nga Supabase te boot()
+  save() { Net.queue(); },
+  replace(d) {
+    this.data = {
+      products: d.products || [], suppliers: d.suppliers || [], purchases: d.purchases || [],
+      meta: Object.assign({ demo: false, lastBuyer: '' }, d.meta || {})
+    };
+    Net.queueFull();
+  }
+};
+
+const Net = {
+  shadow: { products: {}, suppliers: {}, purchases: {} }, metaShadow: '',
+  busy: false, dirty: false, full: false, timer: null, pullTimer: null, lastWrite: 0,
+  chip(text, cls) {
+    const el = document.getElementById('netChip'); if (!el) return;
+    el.textContent = text;
+    el.style.borderColor = cls === 'bad' ? 'var(--danger)' : cls === 'ok' ? 'var(--accent)' : 'var(--line)';
+    el.style.color = cls === 'bad' ? 'var(--danger)' : cls === 'ok' ? 'var(--accent)' : 'var(--muted)';
+  },
+  clean(row) { const o = Object.assign({}, row); delete o.created_at; return o; },
+  index(arr) { const o = {}; (arr || []).forEach(x => { if (x && x.id) o[x.id] = JSON.stringify(x); }); return o; },
+  snapshot() {
+    TABLES.forEach(k => this.shadow[k] = this.index(Store.data[k]));
+    this.metaShadow = JSON.stringify(Store.data.meta);
+  },
+  async pull() {
+    if (!SB) throw new Error('pa konfigurim');
+    const [pr, su, pu, mt] = await Promise.all([
+      SB.from('products').select('*'),
+      SB.from('suppliers').select('*'),
+      SB.from('purchases').select('*'),
+      SB.from('meta').select('value').eq('id', 'app').maybeSingle()
+    ]);
+    const err = pr.error || su.error || pu.error;
+    if (err) throw err;
+    Store.data = {
+      products: (pr.data || []).map(r => this.clean(r)),
+      suppliers: (su.data || []).map(r => this.clean(r)),
+      purchases: (pu.data || []).map(r => Object.assign(this.clean(r), { attachments: r.attachments || [] })),
+      meta: Object.assign({ demo: false, lastBuyer: '' }, (mt && mt.data && mt.data.value) || {})
+    };
+    this.snapshot();
+  },
+  queue() { this.dirty = true; this.kick(); },
+  queueFull() { this.dirty = true; this.full = true; this.kick(); },
+  kick() { clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 150); },
+  async flush() {
+    if (this.busy || !this.dirty || !SB) return;
+    this.busy = true;
+    const wasFull = this.full;
+    this.dirty = false; this.full = false;
+    this.lastWrite = Date.now();
+    this.chip('Po ruhet…', '');
+    try {
+      if (wasFull) {
+        // zëvendësim i plotë: fshi gjithçka, pastaj shkruaj të renë
+        for (const t of ['purchases', 'products', 'suppliers']) {
+          const { error } = await SB.from(t).delete().neq('id', '___asnje___');
+          if (error) throw error;
+        }
+        for (const t of ['products', 'suppliers', 'purchases']) {
+          const rows = Store.data[t];
+          for (let i = 0; i < rows.length; i += 500) {
+            const { error } = await SB.from(t).insert(rows.slice(i, i + 500));
+            if (error) throw error;
+          }
+        }
+      } else {
+        for (const t of TABLES) {
+          const now = this.index(Store.data[t]), prev = this.shadow[t];
+          const up = [], del = [];
+          for (const id in now) if (now[id] !== prev[id]) up.push(JSON.parse(now[id]));
+          for (const id in prev) if (!(id in now)) del.push(id);
+          if (up.length) { const { error } = await SB.from(t).upsert(up); if (error) throw error; }
+          if (del.length) { const { error } = await SB.from(t).delete().in('id', del); if (error) throw error; }
+        }
+      }
+      if (JSON.stringify(Store.data.meta) !== this.metaShadow || wasFull) {
+        const { error } = await SB.from('meta').upsert({ id: 'app', value: Store.data.meta });
+        if (error) throw error;
+      }
+      this.snapshot();
+      this.lastWrite = Date.now();
+      this.chip('Sinkronizuar ✓', 'ok');
+    } catch (e) {
+      console.warn('Ruajtja dështoi:', e && e.message);
+      this.dirty = true; if (wasFull) this.full = true;
+      this.chip('Jashtë linje — do ruhet vetë', 'bad');
+      clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 4000);
+    } finally {
+      this.busy = false;
+      if (this.dirty) this.kick();
+    }
+  },
+  /* Ndryshimet e kolegëve vijnë nga Realtime; i marrim të gjitha me një tërheqje të vetme. */
+  schedulePull() {
+    clearTimeout(this.pullTimer);
+    this.pullTimer = setTimeout(async () => {
+      if (this.busy || this.dirty || Date.now() - this.lastWrite < 1200) return;
+      try { await this.pull(); renderAll(); toast('U përditësua nga një përdorues tjetër'); this.chip('Online · live', 'ok'); }
+      catch (e) {}
+    }, 400);
+  },
+  listen() {
+    if (!SB) return;
+    SB.channel('regjistri-blerjeve')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => this.schedulePull())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, () => this.schedulePull())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'purchases' }, () => this.schedulePull())
+      .subscribe(st => {
+        if (st === 'SUBSCRIBED') this.chip('Online · live', 'ok');
+        if (st === 'CHANNEL_ERROR' || st === 'TIMED_OUT') this.chip('Lidhja live u ndërpre', 'bad');
+      });
+    /* Rrjetë sigurie: edhe nëse humbet ndonjë njoftim live, çdo minutë
+       kontrollohet heshturazi nëse dikush ka ndryshuar diçka. */
+    setInterval(async () => {
+      if (this.busy || this.dirty || document.querySelector('dialog[open]')) return;
+      try {
+        const before = JSON.stringify([Store.data.purchases.length, Store.data.suppliers.length, Store.data.products.length]);
+        await this.pull();
+        if (JSON.stringify([Store.data.purchases.length, Store.data.suppliers.length, Store.data.products.length]) !== before) renderAll();
+      } catch (e) {}
+    }, 60000);
+  }
+};
+
+/* ---------- Skedarët e faturave (Supabase Storage) ----------
+   Metadata (emri, tipi, madhësia) rri te blerja; vetë skedari në bucket-in
+   "fatura", që ta hapë kushdo në staf nga çdo pajisje. */
+const BUCKET = 'fatura';
+const Files = {
+  async put(id, blob) {
+    const { error } = await SB.storage.from(BUCKET).upload(id, blob, {
+      contentType: blob.type || 'application/octet-stream', upsert: true
+    });
+    if (error) throw error;
+    return true;
+  },
+  async get(id) {
+    const { data, error } = await SB.storage.from(BUCKET).download(id);
+    if (error) return null;
+    return data;
+  },
+  async del(id) { try { await SB.storage.from(BUCKET).remove([id]); } catch (e) {} },
+  async clear() {
+    try {
+      const { data } = await SB.storage.from(BUCKET).list('', { limit: 1000 });
+      if (data && data.length) await SB.storage.from(BUCKET).remove(data.map(f => f.name));
+    } catch (e) {}
+  }
+};
+const MAX_FILE = 15 * 1024 * 1024;
+const guessMime = name => {
+  const e = (name.split('.').pop() || '').toLowerCase();
+  return ({ pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp', zip: 'application/zip' })[e] || 'application/octet-stream';
+};
+const fmtSize = n => n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' : (n / 1048576).toFixed(1).replace('.', ',') + ' MB';
+const ATT_ICON = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 01-7.8-7.8l9-9a3.7 3.7 0 015.2 5.2l-9 9a1.8 1.8 0 01-2.6-2.6l8.2-8.2"/></svg>';
+const attChips = pu => (pu.attachments || []).map(a => `<button class="att" data-att="${esc(a.id)}" title="${esc(a.name)} · ${esc(fmtSize(a.size || 0))}">${ATT_ICON}<span>${esc(a.name)}</span></button>`).join('');
+/* Numri i faturës është vetë lidhja: klik = hap (foto/PDF) ose shkarkon (ZIP). */
+function invLink(pu, tokens) {
+  const at = pu.attachments || [];
+  const label = pu.invoice ? (tokens ? hl(pu.invoice, tokens) : esc(pu.invoice)) : '';
+  if (!at.length) return `<span class="num">${label || '—'}</span>`;
+  const first = at[0];
+  const more = at.slice(1).map(a => `<button class="att" data-att="${esc(a.id)}" title="${esc(a.name)}">${ATT_ICON}<span>${esc(a.name)}</span></button>`).join('');
+  return `<button class="att num" data-att="${esc(first.id)}" title="Hap faturën: ${esc(first.name)} · ${esc(fmtSize(first.size || 0))}">${ATT_ICON}<span>${label || esc(first.name)}</span></button>${more}`;
+}
+function downloadUrl(url, name) { const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+async function openAtt(id) {
+  let att = null;
+  for (const p of Store.data.purchases) { att = (p.attachments || []).find(a => a.id === id); if (att) break; }
+  if (!att) return;
+  const mime = (att.type && att.type !== 'application/octet-stream') ? att.type : guessMime(att.name);
+  const viewable = mime === 'application/pdf' || /^image\/(jpeg|png|gif|webp)$/.test(mime);
+  const w = viewable ? window.open('', '_blank') : null; /* hapet menjëherë që të mos bllokohet nga shfletuesi */
+  try {
+    const blob = await Files.get(id);
+    if (!blob) { if (w) w.close(); return toast('Skedari nuk u gjet në këtë pajisje.'); }
+    const url = URL.createObjectURL(new Blob([blob], { type: mime }));
+    if (w) w.location.href = url; else downloadUrl(url, att.name);
+    setTimeout(() => URL.revokeObjectURL(url), 5 * 60 * 1000);
+  } catch (e) { if (w) w.close(); toast('Hapja e skedarit dështoi.'); }
+}
+
+/* ---------- Të dhëna shembull ---------- */
+function demoData() {
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const suppliers = [
+    ['s1','Mobileria Arbëria','Tiranë','Rr. e Kavajës 112','+355 69 211 4408','41.3190,19.8003','Dorëzim brenda 3 javësh'],
+    ['s2','Kuzhina Moderne sh.p.k.','Tiranë','Autostrada Tiranë–Durrës, km 5','+355 68 305 7721','41.3402,19.7611','Bën edhe matje në vend'],
+    ['s3','Elektro Dajti','Tiranë','Rr. Dritan Hoxha 24','+355 69 774 1290','',''],
+    ['s4','Bau Market Durrës','Durrës','Rr. Egnatia 8','+355 52 233 410','41.3231,19.4472','Zbritje për porosi mbi 100.000 L'],
+    ['s5','Ferramenta Shkodra','Shkodër','Bulevardi Skënderbeu 31','+355 68 442 9035','42.0683,19.5126',''],
+    ['s6','Papirus Zyra','Tiranë','Rr. Myslym Shyri 5','+355 4 222 6180','',''],
+    ['s7','Tech Point Albania','Tiranë','Blv. Zogu I 77','+355 69 551 0083','','Garanci 2 vjet'],
+    ['s8','Pllaka & Sanitare Elbasan','Elbasan','Rr. Aqif Pasha 60','+355 67 318 2246','','']
+  ].map(a => ({ id: a[0], name: a[1], city: a[2], address: a[3], phone: a[4], location: a[5], note: a[6], updatedAt: nowISO() }));
+  const prodDefs = [
+    ['Kuzhinetë','set',180000,260000,'ALL',['s1','s2']],
+    ['Dollap rrobash','copë',45000,70000,'ALL',['s1','s2']],
+    ['Tavolinë zyre','copë',18000,32000,'ALL',['s1','s6']],
+    ['Karrige zyre','copë',8000,15000,'ALL',['s1','s6','s7']],
+    ['Kabllo elektrik 3x2.5','m',140,190,'ALL',['s3','s4','s5']],
+    ['Prizë me tokëzim','copë',250,420,'ALL',['s3','s4']],
+    ['Çimento 50 kg','thes',650,780,'ALL',['s4','s5']],
+    ['Pllaka 60x60','m²',1400,2300,'ALL',['s8','s4']],
+    ['Lavaman me mobilje','set',22000,38000,'ALL',['s8','s4']],
+    ['Letër A4','kuti',2800,3500,'ALL',['s6','s7']],
+    ['Laptop 15"','copë',650,900,'EUR',['s7']],
+    ['Bojë e bardhë 20 L','kovë',3800,5200,'ALL',['s4','s5']]
+  ];
+  const products = prodDefs.map((d, i) => ({ id: 'p' + (i + 1), name: d[0], unit: d[1], updatedAt: nowISO() }));
+  const buyers = ['Arben Hoxha', 'Elona Prifti', 'Besnik Daka'];
+  const today = new Date(); const purchases = [];
+  for (let i = 0; i < 56; i++) {
+    const di = (i * 5) % prodDefs.length; const d = prodDefs[di];
+    const sup = d[5][Math.floor(rnd() * d[5].length)];
+    const days = Math.floor(rnd() * 540) + (i < 12 ? 3 : 0);
+    const dt = new Date(today); dt.setDate(dt.getDate() - days);
+    const iso = new Date(dt - dt.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
+    let price = d[2] + rnd() * (d[3] - d[2]); price = d[4] === 'EUR' ? Math.round(price) : Math.round(price / 10) * 10;
+    const qty = d[1] === 'm' ? 50 + Math.floor(rnd() * 200) : d[1] === 'set' || d[0] === 'Laptop 15"' ? 1 + Math.floor(rnd() * 3) : 2 + Math.floor(rnd() * 20);
+    purchases.push({ id: uid(), productId: products[di].id, supplierId: sup, date: iso, qty, unit: d[1], price, currency: d[4],
+      invoice: 'F-' + iso.slice(0, 4) + '-' + String(1000 + Math.floor(rnd() * 8999)), buyer: buyers[Math.floor(rnd() * buyers.length)], note: '', updatedAt: nowISO() });
+  }
+  return { products, suppliers, purchases, meta: { demo: true, lastBuyer: '' } };
+}
+
+/* ---------- Ndihmës ---------- */
+const state = { tab: 'search', q: '', expanded: new Set(), drawerId: null };
+const maps = () => {
+  const prod = {}, sup = {};
+  Store.data.products.forEach(p => prod[p.id] = p);
+  Store.data.suppliers.forEach(s => sup[s.id] = s);
+  return { prod, sup };
+};
+const byDateDesc = (a, b) => (b.date || '').localeCompare(a.date || '') || (b.updatedAt || '').localeCompare(a.updatedAt || '');
+const fmtDate = iso => { if (!iso) return '—'; const [y, m, d] = iso.split('-'); return `${d}.${m}.${y}`; };
+function ago(iso) {
+  if (!iso) return '';
+  const a = new Date(iso + 'T00:00:00'), t = new Date(todayISO() + 'T00:00:00');
+  const d = Math.round((t - a) / 864e5);
+  if (d <= 0) return 'sot'; if (d === 1) return 'dje'; if (d < 31) return `para ${d} ditësh`;
+  const m = Math.round(d / 30.44); if (m < 12) return `para ${m} ${m === 1 ? 'muaji' : 'muajsh'}`;
+  const y = Math.floor(d / 365.25); return `para ${y} ${y === 1 ? 'viti' : 'vjetësh'}`;
+}
+const nf = n => Number(n).toLocaleString('de-DE', { maximumFractionDigits: 2 });
+const money = (n, cur) => cur === 'EUR' ? `€${nf(n)}` : `${nf(n)} L`;
+function mapsUrl(s) {
+  const loc = (s.location || '').trim();
+  if (/^https?:\/\//i.test(loc)) return loc;
+  if (/^-?\d+(\.\d+)?\s*,\s*-?\d+(\.\d+)?$/.test(loc)) return 'https://www.google.com/maps?q=' + encodeURIComponent(loc.replace(/\s+/g, ''));
+  const addr = [s.address, s.city].filter(Boolean).join(', ');
+  return addr ? 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(addr) : '';
+}
+function hl(text, tokens) {
+  text = String(text ?? ''); if (!tokens || !tokens.length) return esc(text);
+  const n = text.split('').map(baseChar).join('');
+  if (n.length !== text.length) return esc(text);
+  const mark = new Array(text.length).fill(false);
+  tokens.forEach(t => { if (!t) return; let i = n.indexOf(t); while (i !== -1) { for (let k = i; k < i + t.length; k++) mark[k] = true; i = n.indexOf(t, i + t.length); } });
+  let out = '', open = false;
+  for (let i = 0; i < text.length; i++) {
+    if (mark[i] && !open) { out += '<mark>'; open = true; }
+    if (!mark[i] && open) { out += '</mark>'; open = false; }
+    out += esc(text[i]);
+  }
+  return out + (open ? '</mark>' : '');
+}
+let toastTimer;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 2800); }
+
+/* ---------- Kërko ---------- */
+function purchaseRow(pu, m, o) {
+  const s = m.sup[pu.supplierId], p = m.prod[pu.productId], t = o.tokens;
+  const first = o.showProduct
+    ? `<button class="linkbtn" data-q="${esc(p ? p.name : '')}">${hl(p ? p.name : '—', t)}</button>
+       <span class="sub"><button class="linkbtn" style="font-weight:500" data-supplier="${esc(pu.supplierId)}">${hl(s ? s.name : '—', t)}</button></span>`
+    : `<button class="linkbtn" data-supplier="${esc(pu.supplierId)}">${hl(s ? s.name : 'Furnitor i panjohur', t)}</button>
+       <span class="sub">${esc(s ? [s.city, s.phone].filter(Boolean).join(' · ') : '')}</span>`;
+  const cnt = o.counts && o.counts[pu.supplierId] > 1 ? `<span class="sub">blerë ${o.counts[pu.supplierId]} herë</span>` : '';
+  return `<div class="row">
+    <div class="c c-sup">${first}${cnt}<button class="rebuy" data-rebuy="${esc(pu.id)}" title="Regjistro të njëjtën blerje me të dhënat e kësaj blerjeje">Blej sërish</button></div>
+    <div class="c" data-l="Data"><span class="num">${fmtDate(pu.date)}</span><span class="sub">${ago(pu.date)}</span></div>
+    <div class="c" data-l="Çmimi për njësi"><span class="price num">${money(pu.price, pu.currency)}</span>${o.cheapest === pu.id ? '<span class="tag">më i lirë</span>' : ''}<span class="sub">për ${esc(pu.unit || 'copë')}</span></div>
+    <div class="c num" data-l="Sasia">${nf(pu.qty)} ${esc(pu.unit || '')}</div>
+    <div class="c" data-l="Blerë nga">${hl(pu.buyer || '—', t)}</div>
+    <div class="c" data-l="Fatura">${invLink(pu, t)}</div>
+  </div>`;
+}
+const ROWH = `<div class="rowh"><div>Furnitori</div><div>Data</div><div>Çmimi</div><div>Sasia</div><div>Blerë nga</div><div>Fatura</div></div>`;
+
+function renderSearch() {
+  const out = $('#results'); const m = maps(); const D = Store.data;
+  const tokens = norm(state.q).split(/\s+/).filter(Boolean);
+  if (!D.purchases.length) {
+    out.innerHTML = `<div class="empty"><strong>Ende pa blerje të regjistruara</strong>Regjistro blerjen e parë dhe këtu do të shfaqen furnitorët, çmimet dhe kush e bleu.<br><br><button class="btn" data-act="new-purchase">Regjistro blerje</button></div>`;
+    return;
+  }
+  if (!tokens.length) {
+    const recent = [...D.purchases].sort(byDateDesc).slice(0, 8);
+    out.innerHTML = `<div class="sec-title">Blerjet e fundit</div><div class="prod"><div class="rows">${ROWH}${recent.map(p => purchaseRow(p, m, { tokens: [], showProduct: true })).join('')}</div></div>`;
+    return;
+  }
+  const hit = (...fields) => tokens.every(t => fields.some(f => norm(f).includes(t)));
+  let products = D.products.filter(p => hit(p.name));
+  const lastOf = {}; D.purchases.forEach(pu => { if (!lastOf[pu.productId] || pu.date > lastOf[pu.productId]) lastOf[pu.productId] = pu.date; });
+  const q0 = tokens[0];
+  products.sort((a, b) => (norm(b.name).startsWith(q0) - norm(a.name).startsWith(q0)) || (lastOf[b.id] || '').localeCompare(lastOf[a.id] || ''));
+  const sups = D.suppliers.filter(s => hit(s.name, s.city, s.address)).slice(0, 6);
+  const invs = D.purchases.filter(pu => pu.invoice && hit(pu.invoice)).sort(byDateDesc).slice(0, 8);
+  let html = '';
+
+  products.slice(0, 6).forEach(p => {
+    const all = D.purchases.filter(pu => pu.productId === p.id).sort(byDateDesc);
+    const counts = {}; all.forEach(pu => counts[pu.supplierId] = (counts[pu.supplierId] || 0) + 1);
+    const seen = new Set(); const latest = [];
+    all.forEach(pu => { if (!seen.has(pu.supplierId)) { seen.add(pu.supplierId); latest.push(pu); } });
+    const expanded = state.expanded.has(p.id);
+    const shown = expanded ? all : latest.slice(0, 5);
+    let cheapest = null;
+    if (!expanded && shown.length > 1) {
+      const cur = shown[0].currency; const same = shown.filter(x => x.currency === cur);
+      if (same.length > 1) cheapest = same.reduce((a, b) => b.price < a.price ? b : a).id;
+    }
+    html += `<article class="prod">
+      <div class="prod-h"><h2>${hl(p.name, tokens)}</h2>
+        <span class="meta">${all.length ? `${all.length} blerje · ${seen.size} furnitor${seen.size === 1 ? '' : 'ë'}${expanded ? '' : ' · 5 të fundit'}` : 'Ende pa blerje'}</span>
+        <button class="btn ghost sm" data-edit-product="${esc(p.id)}">Ndrysho</button>
+        <button class="btn sm" data-act="new-purchase" data-product="${esc(p.name)}">Regjistro blerje</button></div>
+      <div class="rows">${all.length ? ROWH + shown.map(pu => purchaseRow(pu, m, { tokens, counts: expanded ? null : counts, cheapest })).join('') : '<p style="color:var(--muted);margin:8px 0 12px">Ky artikull është shtuar, por ende nuk është blerë. Regjistro blerjen e parë me butonin lart.</p>'}</div>
+      ${all.length > shown.length || expanded ? `<div class="foot"><button class="linkbtn" data-expand="${esc(p.id)}">${expanded ? 'Shfaq vetëm furnitorët e fundit' : `Shfaq historikun e plotë (${all.length} blerje)`}</button></div>` : ''}
+    </article>`;
+  });
+  if (sups.length) {
+    html += `<div class="sec-title">Furnitorë</div><div class="suplist">${sups.map(s => supRowHTML(s, m, tokens)).join('')}</div>`;
+  }
+  if (invs.length) {
+    html += `<div class="sec-title">Fatura</div><div class="prod"><div class="rows">${ROWH}${invs.map(p => purchaseRow(p, m, { tokens, showProduct: true })).join('')}</div></div>`;
+  }
+  if (!html) {
+    html = `<div class="empty"><strong>Nuk e kemi blerë ende “${esc(state.q)}”</strong>Asnjë furnitor, produkt apo faturë nuk përputhet. Kontrollo shkrimin ose regjistro blerjen e parë.<br><br><button class="btn" data-act="new-purchase" data-product="${esc(state.q)}">Regjistro blerje</button></div>`;
+  }
+  html += addBarHTML(state.q, ['product', 'supplier']);
+  out.innerHTML = html;
+}
+/* Kutia "Nuk e gjen? Shto shpejt" — e njëjta logjikë kudo (Kërko, Blerjet, Artikujt, Furnitorët) */
+function addBarHTML(q, want) {
+  q = (q || '').trim(); if (!q) return '';
+  const D = Store.data, nq = norm(q);
+  const needP = want.includes('product') && !D.products.some(x => norm(x.name) === nq);
+  const needS = want.includes('supplier') && !D.suppliers.some(x => norm(x.name) === nq);
+  if (!needP && !needS) return '';
+  return `<div class="addbar"><span>Nuk e gjen? Shto shpejt:</span>
+    ${needP ? `<button class="btn sm" data-act="quick-product" data-name="${esc(q)}">+ Artikull “${esc(q)}”</button>` : ''}
+    ${needS ? `<button class="btn ghost sm" data-act="quick-supplier" data-name="${esc(q)}">+ Furnitor “${esc(q)}”</button>` : ''}</div>`;
+}
+function supRowHTML(s, m, tokens = []) {
+  const ps = Store.data.purchases.filter(p => p.supplierId === s.id).sort(byDateDesc);
+  const last = ps[0];
+  return `<button class="suprow" data-supplier="${esc(s.id)}">
+    <span class="n">${hl(s.name, tokens)}</span><span class="r num">${ps.length} blerje</span>
+    <span class="s">${esc([s.city, s.phone].filter(Boolean).join(' · ') || 'Pa kontakt')}</span><span class="r">${last ? 'e fundit ' + ago(last.date) : 'pa blerje'}</span>
+  </button>`;
+}
+
+/* ---------- Blerjet ---------- */
+function renderPurchases() {
+  renderPurchasesCore();
+  $('#purchaseTable').insertAdjacentHTML('beforeend', addBarHTML($('#pFilter').value, ['product', 'supplier']));
+}
+function renderPurchasesCore() {
+  const m = maps(); const f = norm($('#pFilter').value).split(/\s+/).filter(Boolean);
+  const list = Store.data.purchases.filter(pu => {
+    const p = m.prod[pu.productId], s = m.sup[pu.supplierId];
+    return f.every(t => [p && p.name, s && s.name, pu.buyer, pu.invoice, pu.note].some(x => norm(x).includes(t)));
+  }).sort(byDateDesc);
+  if (!list.length) { $('#purchaseTable').innerHTML = `<div class="empty"><strong>Asnjë blerje</strong>${Store.data.purchases.length ? 'Asnjë blerje nuk përputhet me filtrin.' : 'Regjistro blerjen e parë me butonin lart.'}</div>`; return; }
+  $('#purchaseTable').innerHTML = `<div class="tablewrap"><table>
+    <thead><tr><th>Data</th><th>Produkti</th><th>Furnitori</th><th class="r">Sasia</th><th class="r">Çmimi</th><th class="r">Totali</th><th>Blerë nga</th><th>Fatura</th><th></th></tr></thead>
+    <tbody>${list.map(pu => { const p = m.prod[pu.productId], s = m.sup[pu.supplierId];
+      return `<tr><td class="num">${fmtDate(pu.date)}</td>
+        <td><button class="linkbtn" data-q="${esc(p ? p.name : '')}">${esc(p ? p.name : '—')}</button></td>
+        <td><button class="linkbtn" style="font-weight:500" data-supplier="${esc(pu.supplierId)}">${esc(s ? s.name : '—')}</button></td>
+        <td class="r num">${nf(pu.qty)} ${esc(pu.unit || '')}</td><td class="r num">${money(pu.price, pu.currency)}</td>
+        <td class="r num"><b>${money(pu.price * pu.qty, pu.currency)}</b></td>
+        <td>${esc(pu.buyer || '—')}</td><td>${invLink(pu)}</td>
+        <td class="act"><button class="btn ghost sm" data-edit-purchase="${esc(pu.id)}">Ndrysho</button> <button class="btn danger sm" data-del-purchase="${esc(pu.id)}">Fshi</button></td></tr>`; }).join('')}
+    </tbody></table></div>`;
+}
+
+/* ---------- Artikujt ---------- */
+const prSort = { key: 'name', dir: 1 };
+function renderProducts() {
+  const q = $('#prFilter').value; const f = norm(q).split(/\s+/).filter(Boolean); const D = Store.data; const m = maps();
+  const rows = D.products.filter(p => f.every(t => norm(p.name).includes(t))).map(p => {
+    const ps = D.purchases.filter(x => x.productId === p.id).sort(byDateDesc); const last = ps[0];
+    return { p, n: ps.length, sups: new Set(ps.map(x => x.supplierId)).size, last, ls: last && m.sup[last.supplierId] };
+  });
+  const k = prSort.key, d = prSort.dir;
+  const val = r => k === 'name' ? norm(r.p.name) : k === 'unit' ? norm(r.p.unit) : k === 'count' ? r.n : k === 'sups' ? r.sups : k === 'last' ? (r.last ? r.last.date : '') : k === 'price' ? (r.last ? r.last.price : -1) : '';
+  rows.sort((a, b) => { const x = val(a), y = val(b); return (x < y ? -1 : x > y ? 1 : 0) * d || norm(a.p.name).localeCompare(norm(b.p.name)); });
+  const th = (key, label, cls = '') => `<th class="${cls}"><button class="sortbtn" data-sort="${key}">${label}${k === key ? (d > 0 ? ' ▲' : ' ▼') : ''}</button></th>`;
+  const out = $('#productList');
+  out.innerHTML = rows.length ? `<p class="stat">${rows.length} artikuj${f.length ? ' sipas filtrit' : ''}</p><div class="tablewrap"><table>
+    <thead><tr>${th('name', 'Artikulli')}${th('unit', 'Njësia')}${th('count', 'Blerje', 'r')}${th('sups', 'Furnitorë', 'r')}${th('last', 'Blerja e fundit')}${th('price', 'Çmimi i fundit', 'r')}<th>Furnitori i fundit</th><th></th></tr></thead>
+    <tbody>${rows.map(r => `<tr>
+      <td><button class="linkbtn" data-q="${esc(r.p.name)}">${hl(r.p.name, f)}</button></td>
+      <td>${esc(r.p.unit || 'copë')}</td><td class="r num">${r.n}</td><td class="r num">${r.sups}</td>
+      <td class="num">${r.last ? fmtDate(r.last.date) + `<span class="sub" style="display:block;color:var(--muted);font-size:13px">${ago(r.last.date)}</span>` : '—'}</td>
+      <td class="r num">${r.last ? money(r.last.price, r.last.currency) + ` <span style="color:var(--muted)">/ ${esc(r.last.unit || 'copë')}</span>` : '—'}</td>
+      <td>${r.ls ? `<button class="linkbtn" style="font-weight:500" data-supplier="${esc(r.ls.id)}">${esc(r.ls.name)}</button>` : '—'}</td>
+      <td class="act">${r.last ? `<button class="rebuy" data-rebuy="${esc(r.last.id)}">Blej sërish</button>` : `<button class="btn sm" data-act="new-purchase" data-product="${esc(r.p.name)}">Blerja e parë</button>`} <button class="btn ghost sm" data-edit-product="${esc(r.p.id)}">Ndrysho</button></td></tr>`).join('')}
+    </tbody></table></div>`
+    : `<div class="empty"><strong>Asnjë artikull</strong>${D.products.length ? 'Asnjë artikull nuk përputhet me filtrin.' : 'Shto artikullin e parë me butonin lart.'}</div>`;
+  out.insertAdjacentHTML('beforeend', addBarHTML(q, ['product']));
+}
+
+/* ---------- Furnitorët ---------- */
+function renderSuppliers() {
+  renderSuppliersCore();
+  $('#supplierList').insertAdjacentHTML('beforeend', addBarHTML($('#sFilter').value, ['supplier']));
+}
+function renderSuppliersCore() {
+  const m = maps(); const f = norm($('#sFilter').value).split(/\s+/).filter(Boolean);
+  const list = Store.data.suppliers.filter(s => f.every(t => [s.name, s.city, s.address, s.phone].some(x => norm(x).includes(t))))
+    .sort((a, b) => a.name.localeCompare(b.name, 'sq'));
+  $('#supplierList').innerHTML = list.length ? `<div class="suplist">${list.map(s => supRowHTML(s, m, f)).join('')}</div>`
+    : `<div class="empty"><strong>Asnjë furnitor</strong>${Store.data.suppliers.length ? 'Asnjë furnitor nuk përputhet me filtrin.' : 'Shto furnitorin e parë me butonin lart.'}</div>`;
+}
+
+/* ---------- Furnitori: paneli anësor ---------- */
+function openSupplier(id) {
+  if (!maps().sup[id]) return;
+  state.drawerId = id; renderDrawer();
+  $('#scrim').hidden = false; $('#drawer').hidden = false;
+  $('#drawer .x').focus();
+}
+function closeSupplier() { state.drawerId = null; $('#scrim').hidden = true; $('#drawer').hidden = true; }
+function renderDrawer() {
+  const m = maps(); const s = m.sup[state.drawerId]; if (!s) return closeSupplier();
+  const ps = Store.data.purchases.filter(p => p.supplierId === s.id).sort(byDateDesc);
+  const goods = {}; ps.forEach(p => { const g = goods[p.productId] || (goods[p.productId] = { n: 0, last: p }); g.n++; });
+  const list = Object.entries(goods).map(([pid, g]) => ({ pid, ...g })).sort((a, b) => byDateDesc(a.last, b.last));
+  const url = mapsUrl(s); const tel = (s.phone || '').replace(/[^\d+]/g, '');
+  $('#drawer').innerHTML = `
+    <div class="dh"><div><h2 id="drawerTitle">${esc(s.name)}</h2><div class="city">${esc(s.city || '')}</div></div>
+      <button class="x" data-act="close-drawer" aria-label="Mbyll">×</button></div>
+    <div class="db">
+      <dl class="info">
+        <dt>Telefoni</dt><dd>${s.phone ? `<a href="tel:${esc(tel)}" class="linkbtn">${esc(s.phone)}</a> · <button class="linkbtn" data-copy="${esc(s.phone)}">Kopjo</button>` : '<span style="color:var(--muted)">Pa numër</span>'}</dd>
+        <dt>Adresa</dt><dd>${s.address ? esc(s.address) : '<span style="color:var(--muted)">Pa adresë</span>'}</dd>
+        <dt>Lokacioni</dt><dd>${url ? `<a class="linkbtn" href="${esc(url)}" target="_blank" rel="noopener">Hap në hartë</a>` : '<span style="color:var(--muted)">Pa lokacion</span>'}</dd>
+        ${s.note ? `<dt>Shënim</dt><dd>${esc(s.note)}</dd>` : ''}
+      </dl>
+      <div class="bar" style="margin-bottom:18px">
+        <button class="btn sm" data-act="new-purchase" data-supplier-id="${esc(s.id)}">Regjistro blerje këtu</button>
+        <button class="btn ghost sm" data-edit-supplier="${esc(s.id)}">Ndrysho kontaktin</button>
+      </div>
+      <p class="stat">${ps.length} blerje · ${list.length} produkte${ps[0] ? ' · e fundit ' + ago(ps[0].date) : ''}</p>
+      <h3 style="margin:0 0 4px;font-size:17px">Mallra që blejmë këtu</h3>
+      ${list.length ? `<ul class="goods">${list.map(g => { const p = m.prod[g.pid]; return `<li>
+          <button class="linkbtn" data-q="${esc(p ? p.name : '')}">${esc(p ? p.name : '—')}</button>
+          <span class="s num">${g.n} herë · e fundit ${fmtDate(g.last.date)} · ${money(g.last.price, g.last.currency)} për ${esc(g.last.unit || 'copë')}${g.last.buyer ? ' · ' + esc(g.last.buyer) : ''}</span>
+          <button class="rebuy" data-rebuy="${esc(g.last.id)}">Blej sërish</button></li>`; }).join('')}</ul>`
+        : '<p style="color:var(--muted)">Ende nuk kemi blerë asgjë nga ky furnitor.</p>'}
+    </div>`;
+}
+
+/* ---------- Forma: blerje ---------- */
+function fillLists() {}
+function setCur(v) { $('#fpCur').value = v; $$('#curSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cur === v)); }
+const PICK = { product: ['#fpProduct', '#pkProduct'], supplier: ['#fpSupplier', '#pkSupplier'], buyer: ['#fpBuyer', '#pkBuyer'] };
+/* Kërkim live brenda formës (pa dropdown): lista del nën fushë ndërsa shkruan */
+function renderPick(kind) {
+  const [ii, bb] = PICK[kind]; const v = $(ii).value.trim(); const box = $(bb); const D = Store.data;
+  const toks = norm(v).split(/\s+/).filter(Boolean);
+  if (!toks.length && kind !== 'buyer') { box.innerHTML = ''; return; }
+  const m = maps(); let items = [];
+  if (kind === 'product') items = D.products.filter(p => toks.every(t => norm(p.name).includes(t))).map(p => {
+    const last = D.purchases.filter(x => x.productId === p.id).sort(byDateDesc)[0]; const s = last && m.sup[last.supplierId];
+    return { val: p.name, sub: last ? `e fundit ${fmtDate(last.date)} · ${money(last.price, last.currency)}${s ? ' · ' + s.name : ''}` : '' };
+  });
+  else if (kind === 'supplier') items = D.suppliers.filter(s => toks.every(t => norm(s.name + ' ' + (s.city || '')).includes(t))).map(s => ({ val: s.name, sub: s.city || '' }));
+  else items = [...new Set(D.purchases.map(x => x.buyer).filter(Boolean))].filter(b => toks.every(t => norm(b).includes(t))).map(b => ({ val: b, sub: '' }));
+  const exact = items.some(i => norm(i.val) === norm(v)); items = items.filter(i => norm(i.val) !== norm(v)).slice(0, 5);
+  const rows = items.map(i => `<button type="button" class="pk" data-pick="${kind}" data-val="${esc(i.val)}">${hl(i.val, toks)}${i.sub ? `<small>${esc(i.sub)}</small>` : ''}</button>`).join('');
+  const add = (kind !== 'buyer' && v && !exact) ? `<button type="button" class="pk add" data-addnew="${kind}" data-val="${esc(v)}">+ Shto “${esc(v)}” si ${kind === 'product' ? 'artikull të ri' : 'furnitor të ri'}</button>` : '';
+  box.innerHTML = rows + add;
+}
+const findByName = (arr, name) => arr.find(x => norm(x.name) === norm(name));
+let editingPurchase = null, keptAtts = [], origAtts = [], pendingFiles = [];
+let autoTok = 0, autoFiles = [], autoSrcId = null, touched = false;
+function renderFormAtts() {
+  const row = (name, size, key) => `<div class="attrow"><span>${esc(name)} <small style="display:inline;color:var(--muted)">${esc(fmtSize(size || 0))}</small></span><button type="button" class="linkbtn" data-rm-att="${key}">Hiq</button></div>`;
+  $('#fpAtts').innerHTML = keptAtts.map((a, i) => row(a.name, a.size, 'k:' + i)).concat(pendingFiles.map((f, i) => row(f.name, f.size, 'n:' + i))).join('');
+}
+function addFormFiles(list) {
+  const tooBig = [];
+  [...list].forEach(f => { if (f.size > MAX_FILE) tooBig.push(f.name); else pendingFiles.push(f); });
+  if (tooBig.length) $('#fpErr').textContent = 'Skedari është mbi 15 MB: ' + tooBig.join(', ');
+  else $('#fpErr').textContent = '';
+  renderFormAtts();
+}
+/* Plotëso formën nga një blerje e mëparshme: data = sot, çmimi/sasia/njësia/monedha/foto nga hera e fundit. Gjithçka mbetet e ndryshueshme. */
+async function fillFrom(src) {
+  const m = maps(); const tok = ++autoTok; const s = m.sup[src.supplierId];
+  $('#fpQty').value = src.qty; $('#fpUnit').value = src.unit || 'copë'; $('#fpPrice').value = src.price; setCur(src.currency || 'ALL');
+  $('#fpDate').value = todayISO(); if (!$('#fpBuyer').value) $('#fpBuyer').value = src.buyer || '';
+  pendingFiles = pendingFiles.filter(f => !autoFiles.includes(f)); autoFiles = [];
+  const hasFiles = (src.attachments || []).length > 0;
+  const box = $('#fpAuto'); box.hidden = false;
+  box.textContent = `Plotësuar automatikisht nga blerja e ${fmtDate(src.date)}${s ? ' nga ' + s.name : ''}. Data është sot. Ndrysho çmimin, sasinë, datën ose foton para se ta ruash.` + (hasFiles ? ' Foto/dokumenti i asaj blerjeje po kopjohet; hiqe nëse nuk duhet.' : '');
+  const files = [];
+  for (const a of (src.attachments || [])) { try { const b = await Files.get(a.id); if (b) files.push(new File([b], a.name, { type: a.type || b.type })); } catch (e) {} }
+  if (tok !== autoTok) return;
+  autoFiles = files; pendingFiles.push(...files); renderFormAtts();
+}
+function autoFromPair() {
+  if (editingPurchase || touched) return;
+  const D = Store.data; const p = findByName(D.products, $('#fpProduct').value.trim()), s = findByName(D.suppliers, $('#fpSupplier').value.trim());
+  if (!p || !s) return;
+  const last = D.purchases.filter(x => x.productId === p.id && x.supplierId === s.id).sort(byDateDesc)[0];
+  if (!last || last.id === autoSrcId) return;
+  autoSrcId = last.id; fillFrom(last);
+}
+function openPurchase(o = {}) {
+  fillLists(); editingPurchase = o.id || null;
+  const pu = o.id ? Store.data.purchases.find(p => p.id === o.id) : null; const m = maps();
+  const rb = o.rebuy ? Store.data.purchases.find(p => p.id === o.rebuy) : null;
+  if (rb) { o.productName = (m.prod[rb.productId] || {}).name || ''; o.supplierId = rb.supplierId; }
+  $('#dpTitle').textContent = pu ? 'Ndrysho blerjen' : 'Regjistro blerje';
+  $('#fpProduct').value = pu ? (m.prod[pu.productId] || {}).name || '' : (o.productName || '');
+  $('#fpSupplier').value = pu ? (m.sup[pu.supplierId] || {}).name || '' : (o.supplierId && m.sup[o.supplierId] ? m.sup[o.supplierId].name : '');
+  $('#fpDate').value = pu ? pu.date : todayISO();
+  $('#fpInvoice').value = pu ? pu.invoice || '' : '';
+  $('#fpQty').value = pu ? pu.qty : 1;
+  $('#fpUnit').value = pu ? pu.unit || 'copë' : 'copë';
+  $('#fpPrice').value = pu ? pu.price : '';
+  setCur(pu ? pu.currency || 'ALL' : 'ALL');
+  $('#fpBuyer').value = pu ? pu.buyer || '' : (Store.data.meta.lastBuyer || '');
+  $('#fpNote').value = pu ? pu.note || '' : '';
+  ['fpSupPhone', 'fpSupCity', 'fpSupAddr', 'fpSupLoc'].forEach(i => $('#' + i).value = '');
+  $('#fpErr').textContent = ''; syncSupplierBlock(); productHint();
+  keptAtts = pu ? [...(pu.attachments || [])] : []; origAtts = [...keptAtts]; pendingFiles = []; $('#fpFiles').value = ''; renderFormAtts();
+  touched = false; autoSrcId = null; autoFiles = []; autoTok++; $('#fpAuto').hidden = true;
+  if (rb) { autoSrcId = rb.id; fillFrom(rb); }
+  $('#dPurchase').showModal();
+  (o.rebuy ? $('#fpPrice') : o.productName ? $('#fpSupplier') : $('#fpProduct')).focus();
+}
+function syncSupplierBlock() {
+  const v = $('#fpSupplier').value.trim();
+  $('#newSup').hidden = !v || !!findByName(Store.data.suppliers, v);
+}
+function productHint() {
+  const v = $('#fpProduct').value.trim(); const el = $('#fpHint'); el.textContent = '';
+  const p = findByName(Store.data.products, v); if (!p) return;
+  const last = Store.data.purchases.filter(x => x.productId === p.id).sort(byDateDesc)[0]; if (!last) return;
+  const s = maps().sup[last.supplierId];
+  el.textContent = `Blerja e fundit: ${money(last.price, last.currency)} për ${last.unit || 'copë'} nga ${s ? s.name : '—'}, ${fmtDate(last.date)}.`;
+  if (!editingPurchase && !$('#fpPrice').value) { $('#fpUnit').value = last.unit || 'copë'; setCur(last.currency || 'ALL'); }
+}
+async function savePurchase(e) {
+  e.preventDefault(); const D = Store.data; const err = $('#fpErr');
+  const pn = $('#fpProduct').value.trim(), sn = $('#fpSupplier').value.trim(), buyer = $('#fpBuyer').value.trim();
+  const qty = parseFloat($('#fpQty').value), price = parseFloat($('#fpPrice').value), date = $('#fpDate').value;
+  if (!pn) return err.textContent = 'Shkruaj emrin e produktit.';
+  if (!sn) return err.textContent = 'Zgjidh ose shkruaj furnitorin.';
+  if (!date) return err.textContent = 'Zgjidh datën e blerjes.';
+  if (!(qty > 0)) return err.textContent = 'Sasia duhet të jetë më e madhe se zero.';
+  if (!(price >= 0) || isNaN(price)) return err.textContent = 'Shkruaj çmimin për njësi.';
+  if (!buyer) return err.textContent = 'Shkruaj kush e bleu.';
+  const unit = $('#fpUnit').value.trim() || 'copë';
+  const removed = origAtts.filter(a => !keptAtts.some(k => k.id === a.id)); const newAtts = [];
+  try {
+    for (const f of pendingFiles) { const id = uid(); await Files.put(id, f); newAtts.push({ id, name: f.name, type: f.type || guessMime(f.name), size: f.size }); }
+  } catch (ex) {
+    newAtts.forEach(a => Files.del(a.id).catch(() => {}));
+    return err.textContent = 'Skedari nuk u ruajt në shfletues. Provo një skedar më të vogël ose hiqe.';
+  }
+  let p = findByName(D.products, pn);
+  if (!p) { p = { id: uid(), name: pn, unit, updatedAt: nowISO() }; D.products.push(p); }
+  let s = findByName(D.suppliers, sn);
+  if (!s) { s = { id: uid(), name: sn, phone: $('#fpSupPhone').value.trim(), city: $('#fpSupCity').value.trim(), address: $('#fpSupAddr').value.trim(), location: $('#fpSupLoc').value.trim(), note: '', updatedAt: nowISO() }; D.suppliers.push(s); }
+  const rec = { productId: p.id, supplierId: s.id, date, qty, unit, price, currency: $('#fpCur').value, invoice: $('#fpInvoice').value.trim(), buyer, note: $('#fpNote').value.trim(), attachments: [...keptAtts, ...newAtts], updatedAt: nowISO() };
+  if (editingPurchase) { const i = D.purchases.findIndex(x => x.id === editingPurchase); if (i > -1) D.purchases[i] = Object.assign(D.purchases[i], rec); }
+  else D.purchases.push(Object.assign({ id: uid() }, rec));
+  D.meta.lastBuyer = buyer;
+  Store.save(); removed.forEach(a => Files.del(a.id).catch(() => {})); $('#dPurchase').close(); toast('Blerja u ruajt'); renderAll();
+}
+
+/* ---------- Forma: artikull (shtim i shpejtë) ---------- */
+let editingProduct = null, prodHook = null;
+function openProductForm(o = {}) {
+  editingProduct = o.id || null; prodHook = o.hook || null; const pr = o.id ? maps().prod[o.id] : null;
+  $('#dprTitle').textContent = pr ? 'Ndrysho artikullin' : 'Artikull i ri';
+  $('#fprName').value = pr ? pr.name : (o.name || ''); $('#fprUnit').value = pr ? pr.unit || 'copë' : (o.unit || 'copë'); $('#fprErr').textContent = '';
+  $('#fprDelete').hidden = !pr || Store.data.purchases.some(x => x.productId === pr.id);
+  $('#dProduct').showModal(); $('#fprName').focus(); $('#fprName').select();
+}
+function saveProduct(e) {
+  e.preventDefault(); const D = Store.data; const name = $('#fprName').value.trim(); const unit = $('#fprUnit').value.trim() || 'copë';
+  if (!name) return $('#fprErr').textContent = 'Shkruaj emrin e artikullit.';
+  const dup = findByName(D.products, name);
+  if (dup && dup.id !== editingProduct) return $('#fprErr').textContent = 'Ky artikull ekziston tashmë.';
+  let prod; const wasEdit = !!editingProduct;
+  if (wasEdit) { prod = D.products.find(x => x.id === editingProduct); Object.assign(prod, { name, unit, updatedAt: nowISO() }); }
+  else { prod = { id: uid(), name, unit, updatedAt: nowISO() }; D.products.push(prod); }
+  Store.save(); const hook = prodHook; prodHook = null; $('#dProduct').close(); toast('Artikulli u ruajt');
+  if (hook) { renderAll(); hook(prod); }
+  else if (!wasEdit && state.tab === 'products') { $('#prFilter').value = prod.name; renderAll(); }
+  else if (!wasEdit) goSearch(prod.name);
+  else renderAll();
+}
+function deleteProduct() {
+  const id = editingProduct; if (!id || Store.data.purchases.some(x => x.productId === id)) return;
+  if (!confirm('Të fshihet ky artikull?')) return;
+  Store.data.products = Store.data.products.filter(x => x.id !== id); Store.save(); $('#dProduct').close(); toast('Artikulli u fshi'); renderAll();
+}
+
+/* ---------- Forma: furnitor ---------- */
+let editingSupplier = null, supHook = null;
+function openSupplierForm(id, opts = {}) {
+  supHook = opts.hook || null;
+  editingSupplier = id || null; const s = id ? maps().sup[id] : null;
+  $('#dsTitle').textContent = s ? 'Ndrysho furnitorin' : 'Furnitor i ri';
+  $('#fsName').value = s ? s.name : (opts.name || ''); $('#fsPhone').value = s ? s.phone || '' : ''; $('#fsCity').value = s ? s.city || '' : '';
+  $('#fsAddr').value = s ? s.address || '' : ''; $('#fsLoc').value = s ? s.location || '' : ''; $('#fsNote').value = s ? s.note || '' : '';
+  $('#fsErr').textContent = ''; $('#fsDelete').hidden = !s;
+  $('#dSupplier').showModal(); $('#fsName').focus();
+}
+function saveSupplier(e) {
+  e.preventDefault(); const D = Store.data; const name = $('#fsName').value.trim();
+  if (!name) return $('#fsErr').textContent = 'Shkruaj emrin e furnitorit.';
+  const dup = findByName(D.suppliers, name);
+  if (dup && dup.id !== editingSupplier) return $('#fsErr').textContent = 'Ky furnitor ekziston tashmë.';
+  const rec = { name, phone: $('#fsPhone').value.trim(), city: $('#fsCity').value.trim(), address: $('#fsAddr').value.trim(), location: $('#fsLoc').value.trim(), note: $('#fsNote').value.trim(), updatedAt: nowISO() };
+  if (editingSupplier) Object.assign(D.suppliers.find(x => x.id === editingSupplier), rec);
+  else D.suppliers.push(Object.assign({ id: uid() }, rec));
+  const hook = supHook; supHook = null;
+  Store.save(); $('#dSupplier').close(); toast('Furnitori u ruajt'); renderAll(); if (hook) hook(rec.name);
+}
+function deleteSupplier() {
+  const id = editingSupplier; if (!id) return;
+  if (Store.data.purchases.some(p => p.supplierId === id)) return $('#fsErr').textContent = 'Ky furnitor ka blerje të regjistruara. Fshi ose ndrysho blerjet e tij së pari.';
+  if (!confirm('Të fshihet ky furnitor?')) return;
+  Store.data.suppliers = Store.data.suppliers.filter(s => s.id !== id); Store.save();
+  $('#dSupplier').close(); closeSupplier(); toast('Furnitori u fshi'); renderAll();
+}
+
+/* ---------- Të dhënat ---------- */
+function download(name, text, type) {
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function exportCSV() {
+  const m = maps(); const q = v => '"' + String(v ?? '').replace(/"/g, '""') + '"';
+  const head = ['Data', 'Produkti', 'Furnitori', 'Telefoni', 'Sasia', 'Njësia', 'Çmimi', 'Monedha', 'Totali', 'Personi', 'Fatura', 'Shënim'];
+  const rows = [...Store.data.purchases].sort(byDateDesc).map(p => { const pr = m.prod[p.productId] || {}, s = m.sup[p.supplierId] || {};
+    return [p.date, pr.name, s.name, s.phone, p.qty, p.unit, p.price, p.currency, p.qty * p.price, p.buyer, p.invoice, p.note].map(q).join(','); });
+  download('blerjet-' + todayISO() + '.csv', '\ufeff' + [head.map(q).join(','), ...rows].join('\r\n'), 'text/csv;charset=utf-8');
+}
+function importJSON(file) {
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d || !Array.isArray(d.purchases) || !Array.isArray(d.products) || !Array.isArray(d.suppliers)) throw new Error('format');
+      if (!confirm('Kjo zëvendëson të gjitha të dhënat aktuale. Të vazhdohet?')) return;
+      Store.replace(d); Store.data.meta.demo = false; Store.save(); closeSupplier(); renderAll(); toast('Të dhënat u ngarkuan');
+    } catch (e) { toast('Skedari nuk është kopje e vlefshme e regjistrit.'); }
+  };
+  r.readAsText(file);
+}
+
+/* ---------- Render + tabs ---------- */
+function setTab(t) {
+  state.tab = t;
+  $$('.tab').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t));
+  $$('.view').forEach(v => v.hidden = v.id !== 'v-' + t);
+  renderAll();
+  if (t === 'search') $('#q').focus({ preventScroll: true });
+}
+function renderAll() {
+  $('#demoStrip').hidden = !Store.data.meta.demo;
+  if (state.tab === 'search') renderSearch();
+  if (state.tab === 'purchases') renderPurchases();
+  if (state.tab === 'suppliers') renderSuppliers();
+  if (state.tab === 'products') renderProducts();
+  if (state.drawerId) renderDrawer();
+}
+function goSearch(q) { closeSupplier(); state.q = q; $('#q').value = q; setTab('search'); window.scrollTo({ top: 0 }); }
+
+/* ---------- Evenimente ---------- */
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, a'); if (!t) return;
+  if (t.dataset.tab) return setTab(t.dataset.tab);
+  if (t.dataset.pick) {
+    const k = t.dataset.pick; $(PICK[k][0]).value = t.dataset.val; $(PICK[k][1]).innerHTML = '';
+    syncSupplierBlock(); productHint(); autoFromPair();
+    if (k === 'product') $('#fpSupplier').focus(); else if (k === 'supplier') $('#fpPrice').focus();
+    return;
+  }
+  if (t.dataset.addnew) {
+    const name = t.dataset.val; $(PICK[t.dataset.addnew][1]).innerHTML = '';
+    if (t.dataset.addnew === 'product') return openProductForm({ name, unit: $('#fpUnit').value, hook: pr => { $('#fpProduct').value = pr.name; $('#fpUnit').value = pr.unit || 'copë'; productHint(); autoFromPair(); $('#fpSupplier').focus(); } });
+    return openSupplierForm(null, { name, hook: n => { $('#fpSupplier').value = n; syncSupplierBlock(); autoFromPair(); $('#fpPrice').focus(); } });
+  }
+  if (t.dataset.prunit) { $('#fprUnit').value = t.dataset.prunit; return; }
+  if (t.dataset.editProduct) return openProductForm({ id: t.dataset.editProduct });
+  if (t.dataset.unit) { $('#fpUnit').value = t.dataset.unit; return; }
+  if (t.dataset.cur) { setCur(t.dataset.cur); return; }
+  if (t.dataset.rebuy) return openPurchase({ rebuy: t.dataset.rebuy });
+  if (t.dataset.sort) { prSort.dir = prSort.key === t.dataset.sort ? -prSort.dir : 1; prSort.key = t.dataset.sort; return renderProducts(); }
+  if (t.dataset.att) return openAtt(t.dataset.att);
+  if (t.dataset.rmAtt) { const [k, i] = t.dataset.rmAtt.split(':'); (k === 'k' ? keptAtts : pendingFiles).splice(+i, 1); return renderFormAtts(); }
+  if (t.dataset.supplier) return openSupplier(t.dataset.supplier);
+  if (t.dataset.q !== undefined) return goSearch(t.dataset.q);
+  if (t.dataset.expand) { const id = t.dataset.expand; state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id); return renderSearch(); }
+  if (t.dataset.editPurchase) return openPurchase({ id: t.dataset.editPurchase });
+  if (t.dataset.delPurchase) { if (confirm('Të fshihet kjo blerje?')) { const gone = Store.data.purchases.find(p => p.id === t.dataset.delPurchase); (gone && gone.attachments || []).forEach(a => Files.del(a.id).catch(() => {})); Store.data.purchases = Store.data.purchases.filter(p => p.id !== t.dataset.delPurchase); Store.save(); toast('Blerja u fshi'); renderAll(); } return; }
+  if (t.dataset.editSupplier) return openSupplierForm(t.dataset.editSupplier);
+  if (t.dataset.close) return $('#' + t.dataset.close).close();
+  if (t.dataset.copy) { (navigator.clipboard ? navigator.clipboard.writeText(t.dataset.copy) : Promise.reject()).then(() => toast('Numri u kopjua'), () => toast(t.dataset.copy)); return; }
+  switch (t.dataset.act) {
+    case 'new-purchase': return openPurchase({ productName: t.dataset.product || '', supplierId: t.dataset.supplierId || '' });
+    case 'new-supplier': return openSupplierForm();
+    case 'new-product': return openProductForm();
+    case 'quick-product': return openProductForm({ name: t.dataset.name });
+    case 'quick-supplier': return openSupplierForm(null, { name: t.dataset.name, hook: n => { const s = findByName(Store.data.suppliers, n); if (s) openSupplier(s.id); } });
+    case 'close-drawer': return closeSupplier();
+    case 'export-json': return download('regjistri-blerjeve-' + todayISO() + '.json', JSON.stringify(Store.data, null, 2), 'application/json');
+    case 'export-csv': return exportCSV();
+    case 'import-json': return $('#importFile').click();
+    case 'load-demo': if (confirm('Të dhënat aktuale do të zëvendësohen me shembuj. Të vazhdohet?')) { Files.clear().catch(() => {}); Store.replace(demoData()); closeSupplier(); renderAll(); toast('U ngarkuan të dhënat shembull'); } return;
+    case 'clear-all': if (confirm('Të fshihen të gjitha blerjet, furnitorët dhe produktet?')) { Files.clear().catch(() => {}); Store.replace({}); closeSupplier(); renderAll(); toast('Gjithçka u fshi'); } return;
+  }
+});
+$('#scrim').addEventListener('click', closeSupplier);
+$('#q').addEventListener('input', e => { state.q = e.target.value; renderSearch(); });
+$('#pFilter').addEventListener('input', renderPurchases);
+$('#sFilter').addEventListener('input', renderSuppliers);
+$('#prFilter').addEventListener('input', renderProducts);
+$('#fProduct').addEventListener('submit', saveProduct);
+$('#fprDelete').addEventListener('click', deleteProduct);
+$('#dProduct').addEventListener('close', () => { prodHook = null; });
+$('#dSupplier').addEventListener('close', () => { supHook = null; });
+$('#fPurchase').addEventListener('submit', savePurchase);
+$('#fpFiles').addEventListener('change', e => { addFormFiles(e.target.files); e.target.value = ''; });
+$('#fSupplier').addEventListener('submit', saveSupplier);
+$('#fsDelete').addEventListener('click', deleteSupplier);
+$('#fpSupplier').addEventListener('input', syncSupplierBlock);
+['fpSupplier', 'fpProduct'].forEach(i => { $('#' + i).addEventListener('input', autoFromPair); $('#' + i).addEventListener('change', autoFromPair); });
+Object.keys(PICK).forEach(k => {
+  const inp = $(PICK[k][0]), box = $(PICK[k][1]);
+  inp.addEventListener('input', () => renderPick(k)); inp.addEventListener('focus', () => renderPick(k));
+  inp.addEventListener('blur', () => { box.innerHTML = ''; });
+  box.addEventListener('mousedown', e => e.preventDefault());
+});
+['fpPrice', 'fpQty'].forEach(i => $('#' + i).addEventListener('input', () => { touched = true; }));
+$('#fpProduct').addEventListener('input', productHint);
+$('#importFile').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
+$('#demoClear').addEventListener('click', () => { Files.clear().catch(() => {}); Store.replace({}); renderAll(); toast('Gati. Regjistro blerjen e parë.'); });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && !$('#drawer').hidden && !document.querySelector('dialog[open]')) closeSupplier();
+  if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.querySelector('dialog[open]')) { e.preventDefault(); if (state.tab !== 'search') setTab('search'); $('#q').focus(); }
+});
+
+/* ---------- Nisja (Supabase) ---------- */
+(async function boot() {
+  if (!SB || /PROJEKTI-YT|VENDOS-CELESIN/.test(String(window.SUPABASE_URL) + window.SUPABASE_ANON_KEY)) {
+    Net.chip('Pa konfigurim', 'bad');
+    document.querySelector('#results').innerHTML =
+      '<div class="empty"><strong>Mungon konfigurimi i Supabase</strong>' +
+      'Hap skedarin index.html dhe vendos SUPABASE_URL dhe SUPABASE_ANON_KEY nga Supabase → Settings → API.</div>';
+    return;
+  }
+  try {
+    await Net.pull();
+    const empty = !Store.data.products.length && !Store.data.suppliers.length && !Store.data.purchases.length;
+    if (empty && !Store.data.meta.seeded) {
+      const d = demoData(); d.meta.seeded = true; Store.replace(d);   // mbushja e parë e bazës
+    }
+    renderAll();
+    Net.chip('Online · live', 'ok');
+    Net.listen();
+  } catch (e) {
+    Net.chip('Baza nuk u arrit', 'bad');
+    renderAll();
+    toast('Baza nuk u arrit. Kontrollo lidhjen — faqja do riprovojë vetë.');
+    setTimeout(boot, 5000);
+  }
+  $('#q').focus({ preventScroll: true });
+})();
+</script>
+</body>
+</html>
