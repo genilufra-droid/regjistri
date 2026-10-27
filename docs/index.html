@@ -498,7 +498,7 @@ function explainDbError(e) {
   else if (/failed to fetch|networkerror|load failed|network request failed|econnrefused|enotfound|err_name|offline|timeout|timed out/.test(m)) d = {
     title: 'Serveri i bazës nuk arrihet',
     body: 'Ose interneti mungon në këtë pajisje, ose adresa e projektit nuk ekziston më (projekt i fshirë).',
-    steps: ['Kontrollo internetin dhe provo sërish.', 'Nëse projekti u fshi/krijua i ri: “Ndrysho lidhjen” → vendos URL-në dhe çelësin e ri.', 'Pastaj “Ngarko JSON” te kjo skedë për të rikthyer kopjen rezervë.']
+    steps: ['Kontrollo internetin dhe shtyp “Provo lidhjen”.', 'Hap panelin e Supabase: nëse projekti nuk është në listë, është fshirë — krijo projekt të ri (10 min, hapat te RREGULLO-LIDHJEN.md).', 'Pastaj “Ndrysho lidhjen” me URL-në e çelësin e re dhe “Ngarko JSON” për kopjen rezervë.']
   };
   else if (/jwt|apikey|api key|invalid.*key|unauthorized|401|403/.test(m)) d = {
     title: 'Çelësi i Supabase nuk pranohet',
