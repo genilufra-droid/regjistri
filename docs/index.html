@@ -51,6 +51,26 @@ main{max-width:1040px;margin:0 auto;padding:28px 20px 80px}
 .ft{margin-top:40px;color:var(--muted);font-size:13px;text-align:center}
 .demo-strip{background:var(--signal);color:#201800;padding:8px 20px;font-size:14px;text-align:center}
 .demo-strip button{background:none;border:0;text-decoration:underline;font-weight:600;padding:0 4px}
+/* shiriti i lidhjes: shfaqet vetëm kur baza nuk përgjigjet */
+.net-banner{background:#FBEAE7;color:#7C1E15;border-bottom:1px solid #E4B7B0;padding:9px 20px;font-size:14px;
+  display:flex;gap:10px 16px;flex-wrap:wrap;align-items:center;justify-content:center;text-align:center}
+.net-banner[hidden]{display:none}
+.net-banner b{font-weight:700}
+.net-banner button{background:none;border:0;text-decoration:underline;font-weight:600;padding:0 2px;color:inherit;font-size:14px;white-space:nowrap}
+.net-banner .sep{opacity:.45}
+/* detajet e lidhjes te skeda “Të dhënat” */
+.conn-state{font-size:14px;margin:6px 0 12px;color:var(--muted)}
+.conn-state.bad{color:var(--danger);font-weight:600}
+.conn-state.ok{color:var(--accent);font-weight:600}
+.conn-url{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;word-break:break-all;background:var(--bg);border-radius:4px;padding:2px 6px}
+.diag{background:var(--bg);border-left:4px solid var(--danger);border-radius:4px;padding:10px 14px;margin:12px 0;font-size:14px}
+.diag[hidden]{display:none}
+.diag h4{margin:0 0 6px;font-size:15px;color:var(--danger)}
+.diag p{margin:0 0 6px}
+.diag ul{margin:6px 0 0;padding-left:20px}
+.diag li{margin:2px 0}
+.diag code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;word-break:break-all}
+#connForm[hidden]{display:none}
 
 /* search */
 .search{position:relative}
@@ -213,6 +233,13 @@ dialog h2{margin:0 0 16px;font-size:22px;letter-spacing:-.01em}
   </div>
 </header>
 <div id="demoStrip" class="demo-strip" hidden>Po shfaqen të dhëna shembull. <button type="button" id="demoClear">Fshiji dhe fillo me të dhënat e tua</button></div>
+<div id="netBanner" class="net-banner" role="status" hidden>
+  <span id="netBannerText"></span>
+  <span class="sep" aria-hidden="true">·</span>
+  <button type="button" data-act="conn-test">Provo lidhjen</button>
+  <button type="button" data-act="conn-edit">Ndrysho lidhjen</button>
+  <button type="button" data-act="export-json">Shkarko kopje rezervë</button>
+</div>
 
 <main>
   <!-- KËRKO -->
@@ -258,6 +285,29 @@ dialog h2{margin:0 0 16px;font-size:22px;letter-spacing:-.01em}
   <!-- TË DHËNAT -->
   <section class="view" id="v-data" hidden>
     <div class="bar"><h1>Të dhënat</h1></div>
+    <div class="card" id="connCard">
+      <h3>Lidhja me bazën</h3>
+      <p>Faqja lexon dhe shkruan te <span class="conn-url" id="connUrl">…</span>. Të dhënat rrinë aty, jo në telefon.</p>
+      <p class="conn-state" id="connState">Po lidhet…</p>
+      <div class="bar">
+        <button class="btn ghost sm" data-act="conn-test">Provo lidhjen</button>
+        <button class="btn ghost sm" data-act="conn-edit">Ndrysho lidhjen</button>
+        <a class="btn ghost sm" id="connDash" href="https://supabase.com/dashboard" target="_blank" rel="noopener">Hap Supabase</a>
+      </div>
+      <form id="connForm" hidden novalidate>
+        <label class="fl"><span>Project URL</span>
+          <input class="field" id="connUrlIn" autocomplete="off" spellcheck="false" placeholder="https://abcdefgh.supabase.co"></label>
+        <label class="fl"><span>Çelësi publik (anon / sb_publishable_…)</span>
+          <input class="field" id="connKeyIn" autocomplete="off" spellcheck="false" placeholder="sb_publishable_… ose eyJ…"></label>
+        <p style="font-size:13px;color:var(--muted);margin:0 0 10px">I gjesh te Supabase → <b>Settings → API</b>. Ndryshimi ruhet vetëm në këtë shfletues; për t’i dhënë të gjithë stafit, përditëso edhe <code>docs/index.html</code>.</p>
+        <div class="err" id="connErr" role="alert"></div>
+        <div class="bar">
+          <button type="submit" class="btn sm">Ruaj dhe lidhu sërish</button>
+          <button type="button" class="btn ghost sm" data-act="conn-reset">Kthe vlerat e faqes</button>
+        </div>
+      </form>
+      <div class="diag" id="connDiag" hidden></div>
+    </div>
     <div class="card">
       <h3>Kopje rezervë</h3>
       <p>Shkarko gjithçka si skedar ose rikthe një kopje të mëparshme. Të dhënat rrinë në bazën e përbashkët (Supabase) dhe i sheh i gjithë stafi; çdo ndryshim shfaqet menjëherë te të tjerët. Skedarët e faturave (foto, PDF, ZIP) ruhen në Supabase Storage dhe nuk futen brenda JSON-it apo CSV-së.</p>
@@ -400,29 +450,145 @@ const norm = s => String(s || '').split('').map(baseChar).join('').trim();
 /* ---------- Store (Supabase: databazë e përbashkët) ----------
    Ndërfaqja mbetet e njëjtë (Store.data / save / replace). Ndryshimet
    shkojnë te tabelat në Supabase dhe kthehen live te gjithë stafi. */
-const SB = (() => {
-  try { return window.supabase.createClient(window.SUPABASE_URL, window.SUPABASE_ANON_KEY, { realtime: { params: { eventsPerSecond: 10 } } }); }
-  catch (e) { console.error('Supabase nuk u konfigurua:', e); return null; }
+/* ---------- Lidhja: URL + çelës, diagnostikim, kopje vendore ----------
+   Vlerat vijnë nga koka e faqes (window.SUPABASE_URL / _ANON_KEY). Nëse
+   projekti ndryshon ose baza nuk përgjigjet, mund t’i ndryshosh nga skeda
+   “Të dhënat” pa prekur kodin: ruhen vetëm në këtë shfletues (localStorage). */
+const LS = (() => {
+  try { const l = window.localStorage; l.setItem('__probe__', '1'); l.removeItem('__probe__'); return l; }
+  catch (e) { return null; }
 })();
+const CFG_KEY = 'regjistri.lidhja', CACHE_KEY = 'regjistri.kopja';
+const CFG = (() => {
+  const fallback = { url: String(window.SUPABASE_URL || '').trim(), key: String(window.SUPABASE_ANON_KEY || '').trim() };
+  let saved = null;
+  try { saved = JSON.parse((LS && LS.getItem(CFG_KEY)) || 'null'); } catch (e) {}
+  if (saved && saved.url && saved.key) return { url: String(saved.url).trim(), key: String(saved.key).trim(), custom: true, fallback };
+  return { url: fallback.url, key: fallback.key, custom: false, fallback };
+})();
+let SB = null, SB_ERROR = '';
+function makeClient() {
+  SB_ERROR = '';
+  if (!CFG.url || !CFG.key) { SB_ERROR = 'Mungon URL-ja ose çelësi i Supabase.'; return null; }
+  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+    SB_ERROR = 'Skripti i Supabase nuk u ngarkua (CDN). Kontrollo internetin dhe rifresko faqen.';
+    return null;
+  }
+  try { return window.supabase.createClient(CFG.url, CFG.key, { realtime: { params: { eventsPerSecond: 10 } } }); }
+  catch (e) { SB_ERROR = 'Klienti i Supabase nuk u krijua: ' + ((e && e.message) || e); return null; }
+}
+SB = makeClient();
+
+/* Përkthejmë gabimin teknik në një shpjegim që stafi e kupton dhe e rregullon. */
+function explainDbError(e) {
+  const raw = (e && (e.message || e.error_description || e.details || e.hint)) || SB_ERROR || String(e || '');
+  const code = (e && (e.code || e.status || e.statusCode)) || '';
+  const m = (String(raw) + ' ' + code).toLowerCase();
+  let d;
+  if (/skripti i supabase nuk u ngarkua|supabase nuk u ngarkua|cdn/.test(m)) d = {
+    title: 'Biblioteka e faqes nuk u ngarkua',
+    body: 'Skripti që lidhet me bazën vjen nga një CDN dhe nuk mbërriti — shpesh për shkak të internetit të dobët ose një bllokuesi reklamash.',
+    steps: ['Rifresko faqen.', 'Provo pa bllokues reklamash ose me rrjet tjetër (Wi-Fi ↔ të dhëna celulare).', 'Nëse përsëritet, hap faqen nga një shfletues tjetër.']
+  };
+  else if (/paused|pezull|540|project is paused/.test(m)) d = {
+    title: 'Projekti në Supabase është i pezulluar',
+    body: 'Plani falas e pezullon vetë projektin pas 7 ditësh pa asnjë përdorim. Të dhënat nuk humbin.',
+    steps: ['Hap Supabase → projekti “regjistri-blerjeve”.', 'Shtyp “Restore project” / “Resume project”.', 'Prit ~1 minutë, pastaj shtyp “Provo lidhjen”.']
+  };
+  else if (/failed to fetch|networkerror|load failed|network request failed|econnrefused|enotfound|err_name|offline|timeout|timed out/.test(m)) d = {
+    title: 'Serveri i bazës nuk arrihet',
+    body: 'Ose interneti mungon në këtë pajisje, ose adresa e projektit nuk ekziston më (projekt i fshirë).',
+    steps: ['Kontrollo internetin dhe provo sërish.', 'Nëse projekti u fshi/krijua i ri: “Ndrysho lidhjen” → vendos URL-në dhe çelësin e ri.', 'Pastaj “Ngarko JSON” te kjo skedë për të rikthyer kopjen rezervë.']
+  };
+  else if (/jwt|apikey|api key|invalid.*key|unauthorized|401|403/.test(m)) d = {
+    title: 'Çelësi i Supabase nuk pranohet',
+    body: 'Çelësi publik mund të jetë ndryshuar ose hequr nga paneli.',
+    steps: ['Supabase → Settings → API → kopjo çelësin “anon / publishable”.', '“Ndrysho lidhjen” → vendose aty → Ruaj.']
+  };
+  else if (/does not exist|not found|404|schema|relation|permission denied|row-level security|42501|bucket/.test(m)) d = {
+    title: 'Baza është aty, por tabelat/lejet mungojnë',
+    body: 'Skema nuk është ekzekutuar ose lejet u hoqën.',
+    steps: ['Supabase → SQL Editor → New query.', 'Ngjit gjithë përmbajtjen e skedarit schema.sql → Run.', 'Shtyp “Provo lidhjen”.']
+  };
+  else d = {
+    title: 'Baza nuk u arrit',
+    body: 'Shkaku më i shpeshtë: projekti falas në Supabase pezullohet pas 7 ditësh pa përdorim (të dhënat nuk humbin).',
+    steps: ['Hap panelin e Supabase dhe shtyp “Restore project”.', 'Prit rreth 1 minutë, pastaj shtyp “Provo lidhjen”.', 'Nëse projekti u fshi ose u krijua i ri: “Ndrysho lidhjen” me URL-në e çelësin e re.']
+  };
+  return Object.assign({ raw: String(raw || '').slice(0, 300), code: String(code || '') }, d);
+}
+
+function cacheSave() {
+  if (!LS) return;
+  clearTimeout(cacheSave.t);
+  cacheSave.t = setTimeout(() => {
+    try { LS.setItem(CACHE_KEY, JSON.stringify({ at: new Date().toISOString(), data: Store.data })); } catch (e) {}
+  }, 300);
+}
+function cacheLoad() {
+  try {
+    const c = JSON.parse((LS && LS.getItem(CACHE_KEY)) || 'null');
+    return c && c.data && Array.isArray(c.data.purchases) ? c : null;
+  } catch (e) { return null; }
+}
+/* Kur mbyllet/mbahet mënjanë faqja, ruaje menjëherë kopjen vendore. */
+try {
+  if (typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', () => { try { LS && LS.setItem(CACHE_KEY, JSON.stringify({ at: new Date().toISOString(), data: Store.data })); } catch (e) {} });
+  }
+} catch (e) {}
+
+/* Shiriti lart + karta te “Të dhënat”: tregojnë gjendjen reale të lidhjes. */
+function sayState(text, cls) {
+  const el = $('#connState');
+  if (el) { el.textContent = text; el.className = 'conn-state' + (cls ? ' ' + cls : ''); }
+  const u = $('#connUrl');
+  if (u) u.textContent = CFG.url || '(e pa vendosur)';
+  const dash = $('#connDash');
+  if (dash) {
+    const p = (CFG.url.match(/https:\/\/([a-z0-9-]+)\.supabase\.co/i) || [])[1];
+    dash.href = p ? 'https://supabase.com/dashboard/project/' + p : 'https://supabase.com/dashboard';
+  }
+}
+function showDiag(d) {
+  const box = $('#connDiag');
+  if (!box) return;
+  if (!d) { box.hidden = true; box.innerHTML = ''; return; }
+  const steps = (d.steps || []).map(s => '<li>' + esc(s) + '</li>').join('');
+  box.innerHTML = '<h4>' + esc(d.title) + '</h4><p>' + esc(d.body) + '</p>' +
+    (steps ? '<ul>' + steps + '</ul>' : '') +
+    (d.raw ? '<p style="margin-top:8px;opacity:.75">Detaji teknik: <code>' + esc(d.raw) + '</code></p>' : '');
+  box.hidden = false;
+}
+function showBanner(msg) {
+  const b = $('#netBanner'), t = $('#netBannerText');
+  if (!b || !t) return;
+  if (!msg) { b.hidden = true; t.textContent = ''; return; }
+  t.innerHTML = msg;
+  b.hidden = false;
+}
 const TABLES = ['products', 'suppliers', 'purchases'];
+let LAST_DIAG = null;      // shpjegimi i fundit i një lidhjeje që dështoi (për ekranet bosh)
+
 
 const Store = {
   data: { products: [], suppliers: [], purchases: [], meta: { demo: false, lastBuyer: '' } },
   memoryOnly: false,
   load() { return true; },                    // të dhënat vijnë nga Supabase te boot()
-  save() { Net.queue(); },
+  save() { Net.queue(); cacheSave(); },
   replace(d) {
     this.data = {
       products: d.products || [], suppliers: d.suppliers || [], purchases: d.purchases || [],
       meta: Object.assign({ demo: false, lastBuyer: '', seeded: (this.data.meta || {}).seeded === true }, d.meta || {})
     };
-    Net.queueFull();
+    Net.queueFull(); cacheSave();
   }
 };
 
 const Net = {
   shadow: { products: {}, suppliers: {}, purchases: {} }, metaShadow: '',
   busy: false, dirty: false, full: false, timer: null, pullTimer: null, lastWrite: 0,
+  online: false, listening: false, retrying: false, failCount: 0,
   chip(text, cls) {
     const el = document.getElementById('netChip'); if (!el) return;
     el.textContent = text;
@@ -436,7 +602,7 @@ const Net = {
     this.metaShadow = JSON.stringify(Store.data.meta);
   },
   async pull() {
-    if (!SB) throw new Error('pa konfigurim');
+    if (!SB) { const e = new Error(SB_ERROR || 'pa konfigurim'); e.diag = explainDbError(e); throw e; }
     const [pr, su, pu, mt] = await Promise.all([
       SB.from('products').select('*'),
       SB.from('suppliers').select('*'),
@@ -444,7 +610,7 @@ const Net = {
       SB.from('meta').select('value').eq('id', 'app').maybeSingle()
     ]);
     const err = pr.error || su.error || pu.error;
-    if (err) throw err;
+    if (err) { const e = new Error(err.message || 'Gabim i bazës'); e.diag = explainDbError(err); throw e; }
     Store.data = {
       products: (pr.data || []).map(r => this.clean(r)),
       suppliers: (su.data || []).map(r => this.clean(r)),
@@ -453,12 +619,14 @@ const Net = {
     };
     this.metaExists = !!(mt && mt.data);     // a është përdorur ndonjëherë kjo bazë?
     this.snapshot();
+    cacheSave();
   },
   queue() { this.dirty = true; this.kick(); },
   queueFull() { this.dirty = true; this.full = true; this.kick(); },
   kick() { clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 150); },
   async flush() {
     if (this.busy || !this.dirty || !SB) return;
+    this.retrying = false;
     this.busy = true;
     const wasFull = this.full;
     this.dirty = false; this.full = false;
@@ -494,15 +662,23 @@ const Net = {
       }
       this.snapshot();
       this.lastWrite = Date.now();
+      this.failCount = 0;
       this.chip('Sinkronizuar ✓', 'ok');
+      cacheSave();
+      showBanner('');
+      sayState('Lidhja punon. Të dhënat ruhen te Supabase dhe i sheh i gjithë stafi.', 'ok');
+      showDiag(null);
     } catch (e) {
       console.warn('Ruajtja dështoi:', e && e.message);
       this.dirty = true; if (wasFull) this.full = true;
       this.chip('Jashtë linje — do ruhet vetë', 'bad');
+      cacheSave();
+      /* Një provë e vetme çdo 4 sekonda — pa e bombarduar serverin që s’përgjigjet. */
+      this.retrying = true;
       clearTimeout(this.timer); this.timer = setTimeout(() => this.flush(), 4000);
     } finally {
       this.busy = false;
-      if (this.dirty) this.kick();
+      if (this.dirty && !this.retrying) this.kick();
     }
   },
   /* Ndryshimet e kolegëve vijnë nga Realtime; i marrim të gjitha me një tërheqje të vetme. */
@@ -515,7 +691,8 @@ const Net = {
     }, 400);
   },
   listen() {
-    if (!SB) return;
+    if (!SB || this.listening) return;      // vetëm një kanal, edhe pas riprovave
+    this.listening = true;
     SB.channel('regjistri-blerjeve')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, () => this.schedulePull())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'suppliers' }, () => this.schedulePull())
@@ -708,6 +885,12 @@ function renderSearch() {
   const out = $('#results'); const m = maps(); const D = Store.data;
   const tokens = norm(state.q).split(/\s+/).filter(Boolean);
   if (!D.purchases.length) {
+    if (LAST_DIAG) {
+      out.innerHTML = `<div class="empty"><strong>${esc(LAST_DIAG.title)}</strong>${esc(LAST_DIAG.body)}` +
+        `<br><br><button class="btn" data-act="conn-test">Provo lidhjen</button> ` +
+        `<button class="btn ghost" data-act="conn-edit">Ndrysho lidhjen</button></div>`;
+      return;
+    }
     out.innerHTML = `<div class="empty"><strong>Ende pa blerje të regjistruara</strong>Regjistro blerjen e parë dhe këtu do të shfaqen furnitorët, çmimet dhe kush e bleu.<br><br><button class="btn" data-act="new-purchase">Regjistro blerje</button></div>`;
     return;
   }
@@ -1148,6 +1331,13 @@ document.addEventListener('click', e => {
     case 'import-json': return $('#importFile').click();
     case 'load-demo': if (confirm('Të dhënat aktuale do të zëvendësohen me shembuj. Të vazhdohet?')) { Files.clear().catch(() => {}); Store.replace(demoData()); closeSupplier(); renderAll(); toast('U ngarkuan të dhënat shembull'); } return;
     case 'clear-all': if (confirm('Të fshihen të gjitha blerjet, furnitorët dhe produktet?')) { Files.clear().catch(() => {}); Store.replace({}); closeSupplier(); renderAll(); toast('Gjithçka u fshi'); } return;
+    case 'conn-test': connTest(); return;
+    case 'conn-edit': if (state.tab !== 'data') setTab('data'); connSettingsOpen(true); return;
+    case 'conn-reset':
+      try { LS && LS.removeItem(CFG_KEY); } catch (e) {}
+      CFG.url = CFG.fallback.url; CFG.key = CFG.fallback.key; CFG.custom = false;
+      SB = makeClient(); Net.listening = false;
+      connSettingsOpen(true); toast('U kthyen vlerat e faqes'); connTest(); return;
   }
 });
 $('#scrim').addEventListener('click', closeSupplier);
@@ -1180,13 +1370,80 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.querySelector('dialog[open]')) { e.preventDefault(); if (state.tab !== 'search') setTab('search'); $('#q').focus(); }
 });
 
-/* ---------- Nisja (Supabase) ---------- */
-(async function boot() {
-  if (!SB || /PROJEKTI-YT|VENDOS-CELESIN/.test(String(window.SUPABASE_URL) + window.SUPABASE_ANON_KEY)) {
+/* ---------- Lidhja: provë, ndryshim i vlerave, riprovë ---------- */
+let bootTimer = null, bootTries = 0;
+
+function connSettingsOpen(open) {
+  const f = $('#connForm'); if (!f) return;
+  if (open) {
+    $('#connUrlIn').value = CFG.url || '';
+    $('#connKeyIn').value = CFG.key || '';
+    $('#connErr').textContent = '';
+  }
+  f.hidden = !open;
+}
+
+function connFail(d) {
+  Net.online = false; LAST_DIAG = d;
+  Net.chip('Baza nuk u arrit', 'bad');
+  sayState(d.title, 'bad');
+  showDiag(d);
+  showBanner('<b>' + esc(d.title) + '</b> — të dhënat e reja ruhen në këtë pajisje dhe dërgohen vetë kur lidhja kthehet.');
+}
+
+async function connTest() {
+  showDiag(null); showBanner('');
+  Net.chip('Po provohet…', '');
+  sayState('Po provohet lidhja me ' + (CFG.url || '—') + ' …');
+  try {
+    if (Net.dirty || Net.full) await Net.flush();      // fillimisht atë që pret në radhë
+    await Net.pull();
+    renderAll();
+    Net.online = true; bootTries = 0; LAST_DIAG = null;
+    Net.chip('Online · live', 'ok');
+    Net.listen();
+    sayState('Lidhja punon. Të dhënat ruhen te Supabase dhe i sheh i gjithë stafi.', 'ok');
+    showDiag(null); showBanner('');
+    toast('Lidhja me bazën punon');
+    return true;
+  } catch (e) {
+    connFail(e.diag || explainDbError(e));
+    return false;
+  }
+}
+
+/* Nëse CDN-ja kryesore bllokohet, provo një të dytë — që faqja të mos mbetet e vdekur. */
+function loadLibFallback() {
+  if (window.supabase && typeof window.supabase.createClient === 'function') return Promise.resolve(true);
+  return new Promise(res => {
+    let done = false;
+    const fin = v => { if (!done) { done = true; res(v); } };
+    try {
+      const s = document.createElement('script');
+      s.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+      s.onload = () => fin(!!(window.supabase && window.supabase.createClient));
+      s.onerror = () => fin(false);
+      (document.head || document.body).appendChild(s);
+      setTimeout(() => fin(false), 8000);
+    } catch (e) { fin(false); }
+  });
+}
+
+async function boot() {
+  clearTimeout(bootTimer);
+  sayState('Po lidhet me ' + (CFG.url || '—') + ' …');
+  if (!SB) { await loadLibFallback(); SB = makeClient(); }
+  const unconfigured = !CFG.url || !CFG.key || /PROJEKTI-YT|VENDOS-CELESIN/.test(CFG.url + CFG.key);
+  if (unconfigured) {
+    const d = {
+      title: 'Mungon lidhja me bazën',
+      body: 'Duhen URL-ja e projektit dhe çelësi publik i Supabase.',
+      steps: ['Hap skedën “Të dhënat” → “Ndrysho lidhjen”.', 'Ngjit Project URL dhe çelësin anon / publishable nga Supabase → Settings → API.']
+    };
     Net.chip('Pa konfigurim', 'bad');
-    document.querySelector('#results').innerHTML =
-      '<div class="empty"><strong>Mungon konfigurimi i Supabase</strong>' +
-      'Hap skedarin index.html dhe vendos SUPABASE_URL dhe SUPABASE_ANON_KEY nga Supabase → Settings → API.</div>';
+    connFail(d);
+    const c = cacheLoad(); if (c) { Store.data = c.data; Net.snapshot(); }
+    renderAll();
     return;
   }
   try {
@@ -1196,16 +1453,47 @@ document.addEventListener('keydown', e => {
       const d = demoData(); d.meta.seeded = true; Store.replace(d);   // vetëm në bazë krejt të re
     }
     renderAll();
+    Net.online = true; bootTries = 0; LAST_DIAG = null;
     Net.chip('Online · live', 'ok');
+    sayState('Lidhja punon. Të dhënat ruhen te Supabase dhe i sheh i gjithë stafi.', 'ok');
+    showDiag(null); showBanner('');
     Net.listen();
   } catch (e) {
-    Net.chip('Baza nuk u arrit', 'bad');
+    const d = e.diag || explainDbError(e);
+    connFail(d);
+    const c = cacheLoad();          // vazhdo me kopjen e fundit vendore — pa i humbur të dhënat
+    if (c) { Store.data = c.data; Net.snapshot(); }
     renderAll();
-    toast('Baza nuk u arrit. Kontrollo lidhjen — faqja do riprovojë vetë.');
-    setTimeout(boot, 5000);
+    bootTries++;
+    bootTimer = setTimeout(boot, Math.min(60000, 5000 * Math.pow(2, Math.min(bootTries - 1, 4))));
+    toast('Baza nuk u arrit — po punon me kopjen e fundit. Riprovo vetë.');
   }
   $('#q').focus({ preventScroll: true });
-})();
+}
+
+/* Ndryshimi i lidhjes nga skeda “Të dhënat” — pa prekur kodin. */
+$('#connForm').addEventListener('submit', e => {
+  e.preventDefault();
+  const url = String($('#connUrlIn').value || '').trim().replace(/\/+$/, '');
+  const key = String($('#connKeyIn').value || '').trim();
+  const err = $('#connErr');
+  if (!/^https?:\/\/[^\s/]+\.[^\s]+$/i.test(url)) { err.textContent = 'URL-ja duhet e plotë, p.sh. https://abcdefgh.supabase.co'; return; }
+  if (key.length < 20) { err.textContent = 'Çelësi duket i shkurtër — kopjoje të plotë nga Supabase → Settings → API.'; return; }
+  err.textContent = '';
+  try { LS && LS.setItem(CFG_KEY, JSON.stringify({ url, key })); } catch (e2) {}
+  CFG.url = url; CFG.key = key; CFG.custom = true;
+  SB = makeClient(); Net.listening = false;
+  /* Bazë e re = bosh: kopja vendore dërgohet e plotë, jo vetëm ndryshimet. */
+  Net.shadow = { products: {}, suppliers: {}, purchases: {} };
+  Net.metaShadow = ''; Net.dirty = true; Net.full = true;
+  connSettingsOpen(false);
+  toast('Lidhja u ndryshua — po provohet');
+  connTest();
+});
+try { window.addEventListener('online', () => { if (!Net.online) boot(); }); } catch (e) {}
+
+boot();
+
 </script>
 </body>
 </html>

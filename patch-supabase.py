@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
+VËREJTJE (27 tetor 2026): ky skript e rikrijon docs/index.html nga prototipi dhe
+NUK përmban shtresën e re të lidhjes (diagnostikim i shkaqeve, “Ndrysho lidhjen”,
+kopje vendore, riprovë e kontrolluar). Mos e ekzekuto mbi versionin aktual pa i
+ribërë ato ndryshime; për ndërfaqen puno drejtpërdrejt te docs/index.html dhe
+provo me `npm test`.
+
 Kthen ndërfaqen single-file (prototipi i miratuar) në klient Supabase.
 Pamja dhe logjika mbeten 1:1 — ndryshon vetëm shtresa e ruajtjes:
   Store  -> tabelat products / suppliers / purchases / meta në Supabase

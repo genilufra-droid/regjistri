@@ -101,7 +101,7 @@ global.document = {
 };
 global.location = global.window.location;
 global.confirm = () => true;
-global.navigator = {};
+try { global.navigator = {}; } catch (e) { Object.defineProperty(global, 'navigator', { value: {}, configurable: true }); }
 global.URL.createObjectURL = () => 'blob:x';
 global.URL.revokeObjectURL = () => {};
 global.FileReader = class { readAsText() {} };

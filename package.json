@@ -8,7 +8,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node tests/supabase.test.js && node tests/lidhja.test.js",
+    "cakto": "node cakto-lidhjen.js"
   },
   "keywords": [],
   "author": "",
