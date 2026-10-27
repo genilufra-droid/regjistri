@@ -11,6 +11,12 @@ Stafi  →  https://biobes.github.io/regjistri   (GitHub Pages — vetëm index.
                       └── Realtime: ndryshimi i njërit shfaqet te të gjithë
 ```
 
+> **Shfaqet “Baza nuk u arrit”?** Në 9 raste nga 10 projekti falas i Supabase
+> është *i pezulluar* pas 7 ditësh pa përdorim — të dhënat nuk humbin.
+> Hap [panelin](https://supabase.com/dashboard/project/vikcvnioouxnchwrnahk) →
+> **Restore project** → te faqja **Provo lidhjen**. Hapat e plotë për çdo shkak:
+> [`RREGULLO-LIDHJEN.md`](RREGULLO-LIDHJEN.md).
+
 ---
 
 ## Hapi 1 — Supabase (10 minuta)
@@ -99,6 +105,20 @@ Nëse më vonë do diçka më të mbyllur, pa e komplikuar:
 2. **Hyrje me email** (Supabase Auth) dhe lejet lidhen me `authenticated` në vend të `anon` — ndryshim prej 4 rreshtash te `schema.sql`.
 3. **Vetëm leximi publik**, shkrimi me fjalëkalim.
 
+## Kur baza nuk përgjigjet (e re)
+
+Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
+
+- nën krye del një shirit i kuq me **shkakun** (projekt i pezulluar · çelës i
+  ndryshuar · tabela që mungojnë · pa internet) dhe me butonat *Provo lidhjen*,
+  *Ndrysho lidhjen*, *Shkarko kopje rezervë*;
+- te **Të dhënat → Lidhja me bazën** ka hapat e rregullimit dhe detajin teknik;
+- faqja hapet me **kopjen e fundit vendore** dhe blerjet e reja **ruhen në
+  pajisje**, pastaj dërgohen vetë kur kthehet lidhja;
+- URL-në dhe çelësin e ri mund t’i vendosësh **pa prekur kodin**, te
+  *Të dhënat → Ndrysho lidhjen* (vetëm për atë pajisje) ose për të gjithë stafin me
+  `node cakto-lidhjen.js <url> <çelës>`.
+
 ## Kopje rezervë
 
 - Supabase mban backup automatik ditor (7 ditë në planin falas).
@@ -115,5 +135,9 @@ Nëse më vonë do diçka më të mbyllur, pa e komplikuar:
 | `schema.sql` | tabelat, indekset, lejet, realtime, bucket-i |
 | `migrate.js` | çon të dhënat ekzistuese në Supabase |
 | `patch-supabase.py` | rikrijon `docs/index.html` nga prototipi, nëse ndryshon ndërfaqja |
-| `tests/supabase.test.js` | teston klientin me një Supabase të rremë (9 teste) |
+| `cakto-lidhjen.js` | ndryshon URL-në dhe çelësin te `docs/index.html` me një komandë |
+| `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
+| `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
+| `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |
 | `tests/live.test.js` | provë e vërtetë kundër projektit (7 prova) — `SUPABASE_URL=… SUPABASE_KEY=… node tests/live.test.js` |
+| `tests/staf.test.js` | provë me dy “pajisje” kundër bazës reale (17 prova) |
