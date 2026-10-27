@@ -10,7 +10,25 @@ drejt e te paneli i Supabase.
 
 ---
 
-## 1. Shkaku më i shpeshtë: projekti falas është *i pezulluar*
+## 0. Kontrolli i parë: a ekziston ende projekti?
+
+Hap <https://supabase.com/dashboard> dhe shiko listën e projekteve.
+
+| Çfarë shihni | Çfarë do të thotë | Ku shkoni |
+|---|---|---|
+| Projekti `regjistri-blerjeve` me shenjën **Paused** | Vetëm i pezulluar — të dhënat janë aty | [§1](#1-shkaku-më-i-shpeshtë-projekti-falas-është-i-pezulluar) |
+| Projekti nuk është në listë (as te organizatat e tjera) | Projekti është **fshirë** | [§2](#2-projekti-u-fshi-ose-u-krijua-i-ri-url-tjetër) |
+| Nuk hyni dot në llogari | Llogaria/emaili ka ndryshuar | Rikthe llogarinë, pastaj shiko sërish |
+
+> **27 tetor 2026:** emri `vikcvnioouxnchwrnahk.supabase.co` **nuk zgjidhet më në
+> DNS** (NXDOMAIN) — projekt i pezulluar normalisht vazhdon të zgjidhet. Pra me
+> shumë gjasa projekti është **fshirë**, jo thjesht i pezulluar. Nëse nuk e shihni
+> në panel, shkruaji **Supabase Support** brenda pak ditësh (mund të rikthejnë
+> backup-in) dhe ndërkohë vazhdo me §2.
+
+---
+
+## 1. Shkaku i dytë më i shpeshtë: projekti falas është *i pezulluar*
 
 Supabase e pezullon **vetvetiu** projektin e planit falas pas **7 ditësh pa
 asnjë përdorim**. Të dhënat **nuk humbin** — projekti thjesht fiket.
@@ -77,6 +95,31 @@ hapet më.
 
 > Skedarët e faturave (foto/PDF) nuk janë brenda JSON-it. Nëse projekti i vjetër
 > ende hapet, shkarko dosjen `fatura` nga **Storage** para se ta fshish.
+
+### Hap pas hapi për bazë krejt të re (10 minuta)
+
+1. <https://supabase.com> → **New project** · emri `regjistri-blerjeve` ·
+   rajon **Frankfurt (eu-central-1)** · ruaj fjalëkalimin e databazës.
+2. **SQL Editor → New query** → ngjit gjithë [`schema.sql`](schema.sql) → **Run**.
+   Duhet të përfundojë pa gabime; krijon tabelat, lejet, realtime dhe bucket-in
+   `fatura`.
+3. **Settings → API**: kopjo **Project URL** dhe çelësin **anon / publishable**.
+4. Nga dosja e projektit:
+   ```bash
+   node cakto-lidhjen.js https://projekti-i-ri.supabase.co sb_publishable_xxx
+   git add docs/index.html && git commit -m "Lidhja e re me Supabase" && git push
+   ```
+   (Për ta provuar vetëm në telefonin tënd: te faqja **Të dhënat → Ndrysho
+   lidhjen**.)
+5. Prit ~1 minutë që GitHub Pages të përditësohet, hap faqen → **Provo lidhjen**
+   → duhet të shkruajë *Online · live*.
+6. Kthe të dhënat: **Të dhënat → Ngarko JSON** (kopja e fundit rezervë). Nëse
+   s’ka kopje, baza nis bosh dhe shembujt dalin vetëm herën e parë (butoni
+   *“Fshiji dhe fillo me të dhënat e tua”*).
+
+> **Kopje rezervë më tej:** një herë në javë shtyp *Shkarko JSON* te skeda
+> “Të dhënat” (ose *Shkarko kopje rezervë* te shiriti i kuq). Një skedar 20 KB
+> të shpëton nga çdo fshirje a pezullim.
 
 ---
 

@@ -11,11 +11,15 @@ Stafi  →  https://biobes.github.io/regjistri   (GitHub Pages — vetëm index.
                       └── Realtime: ndryshimi i njërit shfaqet te të gjithë
 ```
 
-> **Shfaqet “Baza nuk u arrit”?** Në 9 raste nga 10 projekti falas i Supabase
-> është *i pezulluar* pas 7 ditësh pa përdorim — të dhënat nuk humbin.
-> Hap [panelin](https://supabase.com/dashboard/project/vikcvnioouxnchwrnahk) →
-> **Restore project** → te faqja **Provo lidhjen**. Hapat e plotë për çdo shkak:
-> [`RREGULLO-LIDHJEN.md`](RREGULLO-LIDHJEN.md).
+> **Shfaqet “Baza nuk u arrit”?** Hap
+> [panelin e Supabase](https://supabase.com/dashboard) dhe shiko nëse projekti
+> `regjistri-blerjeve` është në listë:
+> * me shenjën **Paused** → **Restore project**, prit 1 minutë, te faqja **Provo lidhjen**;
+> * **nuk është në listë** → projekti u fshi; krijo një të ri (10 minuta, hap pas hapi)
+>   dhe vendos lidhjen — shih [`RREGULLO-LIDHJEN.md`](RREGULLO-LIDHJEN.md) §2.
+>
+> Faqja tani e shpjegon vetë shkakun, ruan punën në pajisje derisa lidhja të
+> kthehet dhe e ndryshon lidhjen pa prekur kodin (*Të dhënat → Ndrysho lidhjen*).
 
 ---
 
