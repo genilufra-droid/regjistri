@@ -41,6 +41,16 @@ create table if not exists public.purchases (
   "updatedAt"   text
 );
 
+-- ------------------------------------------- MIGRIM: dokument + rreshta
+-- Një faturë = një dokument (documentId) me N rreshta artikujsh (lineNo 1..N).
+-- Tabela mbetet listë rreshtash; `documentId` i rreshtave të vjetër = id-ja e
+-- vetë rreshtit, pra asnjë migrim i dhënave në kod dhe asnjë humbje.
+-- Hape SQL Editor-in dhe ekzekuto vetëm këtë bllok edhe nëse skema ekziston.
+alter table public.purchases add column if not exists "documentId" text;
+alter table public.purchases add column if not exists "lineNo" int default 1;
+update public.purchases set "documentId" = id, "lineNo" = 1 where "documentId" is null;
+create index if not exists i_pu_doc on public.purchases ("documentId");
+
 -- rresht i vetëm me cilësimet e aplikacionit (demo, personi i fundit që bleu)
 create table if not exists public.meta (
   id    text primary key,

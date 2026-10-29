@@ -137,6 +137,24 @@ Shenja: *relation does not exist*, *permission denied*, *row-level security*.
 
 Hap Supabase → **SQL Editor** → ekzekuto [`schema.sql`](schema.sql) → *Provo lidhjen*.
 
+### 4a. Skemë e vjetër: faturat nuk grupohen në rreshta
+
+Shenja: te **Të dhënat → Lidhja me bazën** del një kuti e verdhë *“Baza ka skemë
+të vjetër — mungon migrimi i faturës”*, ose një faturë me shumë artikuj shfaqet
+si fatura të veçanta.
+
+Kjo ndodh kur tabela `purchases` s’i ka ende kolonat `documentId` dhe `lineNo`
+(një faturë = dokument me N rreshta). Të dhënat **nuk humbin** dhe faqja punon:
+
+1. Supabase → **SQL Editor** → **New query**.
+2. Ngjit bllokun **“MIGRIM: dokument + rreshta”** nga [`schema.sql`](schema.sql)
+   (katër rreshta: `alter table … "documentId"`, `… "lineNo"`, `update …`,
+   `create index … i_pu_doc`) → **Run**.
+3. Te faqja: **Të dhënat → Provo lidhjen**. Kutia e verdhë zhduket.
+
+Rreshtat e vjetër marrin `documentId = id` (secila faturë e vjetër mbetet
+dokument më vete), pra nuk humbet asnjë blerje dhe nuk duhet migrim në kod.
+
 ## 5. Faqja nuk ngarkon dot as bibliotekën
 
 Shenja: *Biblioteka e faqes nuk u ngarkua*. Zakonisht fajin e ka interneti ose
