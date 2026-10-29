@@ -8,7 +8,7 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "node tests/supabase.test.js && node tests/lidhja.test.js",
+    "test": "node tests/supabase.test.js && node tests/lidhja.test.js && node tests/dokument.test.js",
     "cakto": "node cakto-lidhjen.js"
   },
   "keywords": [],

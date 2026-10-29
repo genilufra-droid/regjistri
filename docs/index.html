@@ -191,6 +191,41 @@ dialog h2{margin:0 0 16px;font-size:22px;letter-spacing:-.01em}
 .actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap}
 .err{color:var(--danger);font-size:14px;min-height:20px;margin-top:6px}
 
+/* fatura = dokument: koka + grid rreshtash (si Odoo) */
+#dPurchase{width:min(880px,calc(100% - 24px))}
+.linegrid{overflow-x:auto;margin-top:2px}
+.lhead,.lrow{display:grid;grid-template-columns:26px minmax(180px,1.7fr) 78px 84px 104px 104px 34px;gap:8px;align-items:center;min-width:640px}
+.lhead{padding:0 0 4px;color:var(--muted);font-size:13px;font-weight:500}
+.lhead .lnum{text-align:right}
+.lrow{padding:5px 0;border-top:1px solid var(--line)}
+.lrow:first-of-type{border-top:0}
+.lrow .ln{color:var(--muted);font-size:13px;text-align:right}
+.lrow .field{padding:7px 9px;font-size:15px}
+.lrow .ltot{text-align:right;font-weight:650;white-space:nowrap;font-size:15px;overflow:hidden;text-overflow:ellipsis}
+.lx{background:none;border:0;color:var(--muted);border-radius:var(--radius);width:28px;height:28px;font-size:15px;line-height:1}
+.lx:hover{background:#FBEAE7;color:var(--danger)}
+.lrow .lp{position:relative;min-width:0}
+.lrow .pks:empty{display:none}
+.lrow .pks .pk{position:static}
+.gridfoot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.doctotal{display:flex;gap:16px;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;margin:14px 0 4px;padding:12px 14px;background:var(--bg);border-radius:var(--radius)}
+.doctotal .seg{max-width:190px}
+.dt-sum{text-align:right;margin-left:auto}
+.dt-sum span{display:block;color:var(--muted);font-size:13px}
+.dt-sum b{font-size:22px;font-weight:700;letter-spacing:-.01em}
+@media (max-width:560px){ .doctotal .seg{max-width:none} .dt-sum{text-align:left;margin-left:0} }
+
+/* “Blerjet”: një rresht për faturë, artikujt hapen poshtë */
+tr.docrow td{background:#EEF1E9;font-weight:500}
+tr.docrow td:first-child{border-left:3px solid var(--accent)}
+tr.docrow .open-doc{font-weight:650}
+tr.linerow td{background:#F8F9F5;font-size:14px;padding-top:7px;padding-bottom:7px}
+tr.linerow td:first-child{border-left:3px solid transparent}
+tr.linerow .ln{color:var(--muted);font-variant-numeric:tabular-nums;padding-right:6px}
+tr.linerow:last-child td{border-bottom:1px solid var(--line)}
+.diag.warn{border-left-color:var(--signal);background:#FBF4DE}
+.diag.warn h4{color:#7A5B00}
+
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--radius);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:15px}
 .toast[hidden]{display:none}
 .card{background:var(--paper);box-shadow:0 0 0 1px var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
@@ -336,20 +371,24 @@ dialog h2{margin:0 0 16px;font-size:22px;letter-spacing:-.01em}
 <div class="scrim" id="scrim" hidden></div>
 <aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle" hidden></aside>
 
-<!-- purchase dialog -->
+<!-- purchase dialog: një FATURË (dokument) me N rreshta artikujsh -->
 <dialog id="dPurchase">
   <form id="fPurchase" novalidate>
-    <h2 id="dpTitle">Regjistro blerje</h2>
+    <h2 id="dpTitle">Regjistro faturë</h2>
     <div class="auto" id="fpAuto" hidden></div>
-    <label class="fl"><span>Produkti</span>
-      <input class="field" id="fpProduct" autocomplete="off" required placeholder="p.sh. Kuzhinetë">
-      <small id="fpHint"></small>
-      <div id="pkProduct"></div>
-    </label>
-    <label class="fl"><span>Furnitori</span>
-      <input class="field" id="fpSupplier" autocomplete="off" required placeholder="Shkruaj emrin e furnitorit">
-      <div id="pkSupplier"></div>
-    </label>
+
+    <div class="grid2">
+      <label class="fl"><span>Furnitori</span>
+        <input class="field" id="fpSupplier" autocomplete="off" required placeholder="Shkruaj emrin e furnitorit">
+        <div id="pkSupplier"></div>
+      </label>
+      <label class="fl"><span>Fatura nr.</span><input class="field" id="fpInvoice" placeholder="p.sh. F-2026-0412"></label>
+    </div>
+    <div class="grid2">
+      <label class="fl"><span>Data e faturës</span><input class="field" type="date" id="fpDate" required></label>
+      <label class="fl"><span>Personi që e bleu</span><input class="field" id="fpBuyer" autocomplete="off" required><div id="pkBuyer"></div></label>
+    </div>
+
     <div class="newsup" id="newSup" hidden>
       <p>Furnitor i ri. Plotëso kontaktin që ta gjejmë herën tjetër.</p>
       <div class="grid2">
@@ -359,33 +398,46 @@ dialog h2{margin:0 0 16px;font-size:22px;letter-spacing:-.01em}
       <label class="fl"><span>Adresa</span><input class="field" id="fpSupAddr"></label>
       <label class="fl"><span>Lokacioni në hartë</span><input class="field" id="fpSupLoc" placeholder="Link nga Google Maps ose koordinata"></label>
     </div>
-    <div class="grid2">
-      <label class="fl"><span>Data e blerjes</span><input class="field" type="date" id="fpDate" required></label>
-      <label class="fl"><span>Fatura nr.</span><input class="field" id="fpInvoice" placeholder="p.sh. F-2026-0412"></label>
+
+    <div class="fl">
+      <span>Artikujt e faturës</span>
+      <div class="linegrid">
+        <div class="lhead" aria-hidden="true">
+          <span class="lnum">#</span><span>Artikulli</span><span>Sasia</span><span>Njësia</span><span>Çmimi/njësi</span><span style="text-align:right">Totali</span><span></span>
+        </div>
+        <div id="fpGrid"></div>
+      </div>
+      <div class="gridfoot">
+        <button type="button" class="btn ghost sm" data-addline="1">+ Shto artikull</button>
+        <small id="fpHint"></small>
+      </div>
     </div>
+
+    <div class="doctotal">
+      <div class="fl" style="margin:0">
+        <span>Monedha</span>
+        <input type="hidden" id="fpCur" value="ALL">
+        <div class="seg" id="curSeg"><button type="button" data-cur="ALL" aria-pressed="true">Lekë</button><button type="button" data-cur="EUR" aria-pressed="false">Euro</button></div>
+      </div>
+      <div class="dt-sum"><span>Totali i faturës</span><b class="num" id="fpTotal">—</b></div>
+    </div>
+
     <div class="fl">
       <span>Fatura e skanuar (nuk është e detyrueshme)</span>
       <div id="fpAtts"></div>
       <input class="field" type="file" id="fpFiles" multiple aria-label="Ngarko faturën" accept="image/*,application/pdf,.pdf,.zip,application/zip,application/x-zip-compressed">
-      <small>Foto, PDF ose ZIP. Deri në 15 MB për skedar.</small>
+      <small>Foto, PDF ose ZIP — disa skedarë njëherësh. Deri në 15 MB për skedar. Skedari lidhet me faturën, jo me rreshtin.</small>
     </div>
-    <div class="grid2">
-      <label class="fl"><span>Sasia</span><input class="field num" id="fpQty" type="number" min="0" step="any" value="1" inputmode="decimal"></label>
-      <div class="fl"><span>Njësia</span><input class="field" id="fpUnit" value="copë" autocomplete="off"><div class="chips" id="unitChips"><button type="button" class="cb" data-unit="copë">copë</button><button type="button" class="cb" data-unit="set">set</button><button type="button" class="cb" data-unit="kg">kg</button><button type="button" class="cb" data-unit="m">m</button><button type="button" class="cb" data-unit="m²">m²</button><button type="button" class="cb" data-unit="litër">litër</button><button type="button" class="cb" data-unit="kuti">kuti</button><button type="button" class="cb" data-unit="thes">thes</button><button type="button" class="cb" data-unit="kovë">kovë</button></div></div>
-    </div>
-    <div class="grid2">
-      <label class="fl"><span>Çmimi për njësi</span><input class="field num" id="fpPrice" type="number" min="0" step="any" inputmode="decimal" required></label>
-      <div class="fl"><span>Monedha</span><input type="hidden" id="fpCur" value="ALL"><div class="seg" id="curSeg"><button type="button" data-cur="ALL" aria-pressed="true">Lekë</button><button type="button" data-cur="EUR" aria-pressed="false">Euro</button></div></div>
-    </div>
-    <label class="fl"><span>Personi që e bleu</span><input class="field" id="fpBuyer" autocomplete="off" required><div id="pkBuyer"></div></label>
     <label class="fl"><span>Shënim (nuk është i detyrueshëm)</span><input class="field" id="fpNote"></label>
+
     <div class="err" id="fpErr" role="alert"></div>
     <div class="actions">
       <button type="button" class="btn ghost" data-close="dPurchase">Anulo</button>
-      <button type="submit" class="btn">Ruaj blerjen</button>
+      <button type="submit" class="btn">Ruaj faturën</button>
     </div>
   </form>
 </dialog>
+<datalist id="unitList"><option value="copë"></option><option value="set"></option><option value="kg"></option><option value="m"></option><option value="m²"></option><option value="litër"></option><option value="kuti"></option><option value="thes"></option><option value="kovë"></option></datalist>
 
 <!-- product dialog -->
 <dialog id="dProduct">
@@ -508,7 +560,7 @@ function explainDbError(e) {
   else if (/does not exist|not found|404|schema|relation|permission denied|row-level security|42501|bucket/.test(m)) d = {
     title: 'Baza është aty, por tabelat/lejet mungojnë',
     body: 'Skema nuk është ekzekutuar ose lejet u hoqën.',
-    steps: ['Supabase → SQL Editor → New query.', 'Ngjit gjithë përmbajtjen e skedarit schema.sql → Run.', 'Shtyp “Provo lidhjen”.']
+    steps: ['Supabase → SQL Editor → New query.', 'Ngjit gjithë përmbajtjen e skedarit schema.sql → Run.', 'Provo lidhjen. Nëse dikur ke ekzekutuar një skemë të vjetër, ekzekuto edhe bllokun “MIGRIM: dokument + rreshta” (documentId / lineNo) në SQL Editor.']
   };
   else d = {
     title: 'Baza nuk u arrit',
@@ -553,12 +605,27 @@ function sayState(text, cls) {
 function showDiag(d) {
   const box = $('#connDiag');
   if (!box) return;
-  if (!d) { box.hidden = true; box.innerHTML = ''; return; }
+  if (!d) { box.hidden = true; box.innerHTML = ''; if (box.classList) box.classList.remove('warn'); return; }
   const steps = (d.steps || []).map(s => '<li>' + esc(s) + '</li>').join('');
   box.innerHTML = '<h4>' + esc(d.title) + '</h4><p>' + esc(d.body) + '</p>' +
     (steps ? '<ul>' + steps + '</ul>' : '') +
     (d.raw ? '<p style="margin-top:8px;opacity:.75">Detaji teknik: <code>' + esc(d.raw) + '</code></p>' : '');
+  if (box.classList) box.classList.toggle('warn', !!d.warn);
   box.hidden = false;
+}
+/* Skema e vjetër (pa documentId/lineNo) nuk i prish të dhënat: faturat
+   ruhen njësoj, por rreshtat s’grupohen. Ky shpjegim i kthen te SQL Editor-i. */
+function migrationDiag() {
+  return {
+    warn: true,
+    title: 'Baza ka skemë të vjetër — mungon migrimi i faturës',
+    body: 'Tabela purchases s’ka ende kolonat documentId / lineNo, prandaj rreshtat e një fatura nuk lidhen me njëri-tjetrin. Të dhënat nuk humbin.',
+    steps: [
+      'Hap Supabase → SQL Editor → New query.',
+      'Ngjit bllokun “MIGRIM: dokument + rreshta” nga schema.sql (alter table … documentId / lineNo) → Run.',
+      'Shtyp “Provo lidhjen” te skeda “Të dhënat”.'
+    ]
+  };
 }
 function showBanner(msg) {
   const b = $('#netBanner'), t = $('#netBannerText');
@@ -578,10 +645,41 @@ const Store = {
   save() { Net.queue(); cacheSave(); },
   replace(d) {
     this.data = {
-      products: d.products || [], suppliers: d.suppliers || [], purchases: d.purchases || [],
+      products: d.products || [], suppliers: d.suppliers || [],
+      purchases: this.normalizePurchases(d.purchases || []),
       meta: Object.assign({ demo: false, lastBuyer: '', seeded: (this.data.meta || {}).seeded === true }, d.meta || {})
     };
     Net.queueFull(); cacheSave();
+  },
+  /* Një faturë = dokument (documentId) me N rreshta (lineNo 1..N).
+     Të dhënat mbeten listë e sheshtë rreshtash — kështu Net, kërkimi
+     dhe eksportet punojnë si më parë. Rreshtat e vjetër (pa documentId)
+     sillen sikur documentId = id: asnjë migrim i dhënave në kod. */
+  normalizePurchases(list) {
+    return (list || []).map(p => {
+      const r = Object.assign({}, p);
+      if (!r.id) r.id = uid();
+      if (!r.documentId) r.documentId = r.id;
+      if (!r.lineNo) r.lineNo = 1;
+      return r;
+    });
+  },
+  docKey(line) { return String((line && (line.documentId || line.id)) || ''); },
+  linesOf(documentId) {
+    const k = String(documentId || '');
+    return this.data.purchases
+      .filter(p => this.docKey(p) === k)
+      .sort((a, b) => (a.lineNo || 1) - (b.lineNo || 1));
+  },
+  docOf(line) { return line ? this.linesOf(this.docKey(line)) : []; },
+  docTotals(documentId) {
+    const lines = this.linesOf(documentId);
+    return {
+      count: lines.length,
+      total: lines.reduce((s, l) => s + (+l.qty || 0) * (+l.price || 0), 0),
+      qty: lines.reduce((s, l) => s + (+l.qty || 0), 0),
+      currency: (lines[0] && lines[0].currency) || 'ALL'
+    };
   }
 };
 
@@ -611,10 +709,14 @@ const Net = {
     ]);
     const err = pr.error || su.error || pu.error;
     if (err) { const e = new Error(err.message || 'Gabim i bazës'); e.diag = explainDbError(err); throw e; }
+    const puRows = pu.data || [];
+    /* Skemë e vjetër? (pa kolonën documentId) — nuk është gabim: vetëm
+       diagnostikimi i kujton përdoruesit migrimin në SQL Editor. */
+    this.schemaOld = puRows.length > 0 && !puRows.some(r => Object.prototype.hasOwnProperty.call(r, 'documentId'));
     Store.data = {
       products: (pr.data || []).map(r => this.clean(r)),
       suppliers: (su.data || []).map(r => this.clean(r)),
-      purchases: (pu.data || []).map(r => Object.assign(this.clean(r), { attachments: r.attachments || [] })),
+      purchases: puRows.map(r => Object.assign(this.clean(r), { attachments: r.attachments || [] })),
       meta: Object.assign({ demo: false, lastBuyer: '' }, (mt && mt.data && mt.data.value) || {})
     };
     this.metaExists = !!(mt && mt.data);     // a është përdorur ndonjëherë kjo bazë?
@@ -803,22 +905,36 @@ function demoData() {
   const products = prodDefs.map((d, i) => ({ id: 'p' + (i + 1), name: d[0], unit: d[1], updatedAt: nowISO() }));
   const buyers = ['Arben Hoxha', 'Elona Prifti', 'Besnik Daka'];
   const today = new Date(); const purchases = [];
-  for (let i = 0; i < 56; i++) {
+  /* 48 fatura: shumica me 1 rresht, disa me 2–3 artikuj (si faturat e vërteta).
+     Të gjitha rreshtat e një dokumenti ndajnë documentId, datë, faturë, monedhë. */
+  const priceOf = d => { let price = d[2] + rnd() * (d[3] - d[2]); return d[4] === 'EUR' ? Math.round(price) : Math.round(price / 10) * 10; };
+  const qtyOf = d => d[1] === 'm' ? 50 + Math.floor(rnd() * 200) : d[1] === 'set' || d[0] === 'Laptop 15"' ? 1 + Math.floor(rnd() * 3) : 2 + Math.floor(rnd() * 20);
+  for (let i = 0; i < 48; i++) {
     const di = (i * 5) % prodDefs.length; const d = prodDefs[di];
     const sup = d[5][Math.floor(rnd() * d[5].length)];
     const days = Math.floor(rnd() * 540) + (i < 12 ? 3 : 0);
     const dt = new Date(today); dt.setDate(dt.getDate() - days);
     const iso = new Date(dt - dt.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-    let price = d[2] + rnd() * (d[3] - d[2]); price = d[4] === 'EUR' ? Math.round(price) : Math.round(price / 10) * 10;
-    const qty = d[1] === 'm' ? 50 + Math.floor(rnd() * 200) : d[1] === 'set' || d[0] === 'Laptop 15"' ? 1 + Math.floor(rnd() * 3) : 2 + Math.floor(rnd() * 20);
-    purchases.push({ id: uid(), productId: products[di].id, supplierId: sup, date: iso, qty, unit: d[1], price, currency: d[4],
-      invoice: 'F-' + iso.slice(0, 4) + '-' + String(1000 + Math.floor(rnd() * 8999)), buyer: buyers[Math.floor(rnd() * buyers.length)], note: '', updatedAt: nowISO() });
+    const documentId = uid();
+    const invoice = 'F-' + iso.slice(0, 4) + '-' + String(1000 + Math.floor(rnd() * 8999));
+    const buyer = buyers[Math.floor(rnd() * buyers.length)];
+    const extra = i % 6 === 0 ? 2 : i % 10 === 0 ? 1 : 0;      // 56 rreshta gjithsej
+    const pick = [di];
+    for (let k = 1; k <= extra; k++) pick.push((di + k * 3) % prodDefs.length);
+    pick.forEach((pj, k) => {
+      const dj = prodDefs[pj];
+      purchases.push({
+        id: uid(), documentId, lineNo: k + 1,
+        productId: products[pj].id, supplierId: sup, date: iso, qty: qtyOf(dj), unit: dj[1], price: priceOf(dj),
+        currency: d[4], invoice, buyer, note: '', attachments: [], updatedAt: nowISO()
+      });
+    });
   }
   return { products, suppliers, purchases, meta: { demo: true, lastBuyer: '' } };
 }
 
 /* ---------- Ndihmës ---------- */
-const state = { tab: 'search', q: '', expanded: new Set(), drawerId: null };
+const state = { tab: 'search', q: '', expanded: new Set(), openDocs: new Set(), drawerId: null };
 const maps = () => {
   const prod = {}, sup = {};
   Store.data.products.forEach(p => prod[p.id] = p);
@@ -966,24 +1082,64 @@ function renderPurchases() {
   renderPurchasesCore();
   $('#purchaseTable').insertAdjacentHTML('beforeend', addBarHTML($('#pFilter').value, ['product', 'supplier']));
 }
+/* Faturat si dokumente: një kokë për faturë + rreshtat e artikujve poshtë saj.
+   Kërkimi, statistikat dhe “Blej sërish” vazhdojnë mbi rreshtat. */
+function docGroups() {
+  const map = new Map();
+  Store.data.purchases.forEach(pu => {
+    const k = Store.docKey(pu);
+    if (!map.has(k)) map.set(k, []);
+    map.get(k).push(pu);
+  });
+  const groups = [...map.entries()].map(([id, lines]) => {
+    lines.sort((a, b) => (a.lineNo || 1) - (b.lineNo || 1));
+    const head = [...lines].sort(byDateDesc)[0];
+    const t = Store.docTotals(id);
+    return { id, lines, head, total: t.total, currency: t.currency, count: lines.length };
+  });
+  return groups.sort((a, b) => byDateDesc(a.head, b.head));
+}
 function renderPurchasesCore() {
   const m = maps(); const f = norm($('#pFilter').value).split(/\s+/).filter(Boolean);
-  const list = Store.data.purchases.filter(pu => {
+  const hit = (pu, t) => {
     const p = m.prod[pu.productId], s = m.sup[pu.supplierId];
-    return f.every(t => [p && p.name, s && s.name, pu.buyer, pu.invoice, pu.note].some(x => norm(x).includes(t)));
-  }).sort(byDateDesc);
-  if (!list.length) { $('#purchaseTable').innerHTML = `<div class="empty"><strong>Asnjë blerje</strong>${Store.data.purchases.length ? 'Asnjë blerje nuk përputhet me filtrin.' : 'Regjistro blerjen e parë me butonin lart.'}</div>`; return; }
-  $('#purchaseTable').innerHTML = `<div class="tablewrap"><table>
-    <thead><tr><th>Data</th><th>Produkti</th><th>Furnitori</th><th class="r">Sasia</th><th class="r">Çmimi</th><th class="r">Totali</th><th>Blerë nga</th><th>Fatura</th><th></th></tr></thead>
-    <tbody>${list.map(pu => { const p = m.prod[pu.productId], s = m.sup[pu.supplierId];
-      return `<tr><td class="num">${fmtDate(pu.date)}</td>
-        <td><button class="linkbtn" data-q="${esc(p ? p.name : '')}">${esc(p ? p.name : '—')}</button></td>
-        <td><button class="linkbtn" style="font-weight:500" data-supplier="${esc(pu.supplierId)}">${esc(s ? s.name : '—')}</button></td>
-        <td class="r num">${nf(pu.qty)} ${esc(pu.unit || '')}</td><td class="r num">${money(pu.price, pu.currency)}</td>
+    return [p && p.name, s && s.name, pu.buyer, pu.invoice, pu.note].some(x => norm(x).includes(t));
+  };
+  const groups = docGroups().filter(g => f.every(t => g.lines.some(pu => hit(pu, t))));
+  if (!groups.length) {
+    $('#purchaseTable').innerHTML = `<div class="empty"><strong>Asnjë blerje</strong>${Store.data.purchases.length ? 'Asnjë blerje nuk përputhet me filtrin.' : 'Regjistro faturën e parë me butonin lart.'}</div>`;
+    return;
+  }
+  const rows = groups.map(g => {
+    const s = m.sup[g.head.supplierId], open = state.openDocs.has(g.id);
+    const head = `<tr class="docrow">
+      <td class="num">${fmtDate(g.head.date)}</td>
+      <td><button class="linkbtn" style="font-weight:600" data-supplier="${esc(g.head.supplierId)}">${esc(s ? s.name : 'Furnitor i panjohur')}</button></td>
+      <td><button class="linkbtn open-doc" data-expand-doc="${esc(g.id)}" aria-expanded="${open}">${open ? '▾' : '▸'} ${g.count} ${g.count === 1 ? 'artikull' : 'artikuj'}</button></td>
+      <td class="r num"><b>${money(g.total, g.currency)}</b></td>
+      <td>${esc(g.head.buyer || '—')}</td>
+      <td>${invLink(g.head)}</td>
+      <td class="act"><button class="btn ghost sm" data-edit-doc="${esc(g.id)}">Ndrysho</button> <button class="btn danger sm" data-del-doc="${esc(g.id)}">Fshi</button></td>
+    </tr>`;
+    if (!open) return head;
+    return head + g.lines.map((pu, i) => {
+      const p = m.prod[pu.productId];
+      return `<tr class="linerow">
+        <td class="num" style="color:var(--muted)">${fmtDate(pu.date)}</td>
+        <td><span class="ln">${i + 1}.</span><button class="linkbtn" data-q="${esc(p ? p.name : '')}">${esc(p ? p.name : '—')}</button></td>
+        <td class="num">${nf(pu.qty)} ${esc(pu.unit || '')}</td>
+        <td class="r num">${money(pu.price, pu.currency)}<span style="color:var(--muted)"> / ${esc(pu.unit || 'copë')}</span></td>
         <td class="r num"><b>${money(pu.price * pu.qty, pu.currency)}</b></td>
-        <td>${esc(pu.buyer || '—')}</td><td>${invLink(pu)}</td>
-        <td class="act"><button class="btn ghost sm" data-edit-purchase="${esc(pu.id)}">Ndrysho</button> <button class="btn danger sm" data-del-purchase="${esc(pu.id)}">Fshi</button></td></tr>`; }).join('')}
-    </tbody></table></div>`;
+        <td>${esc(pu.buyer || '—')}</td>
+        <td class="act"><button class="rebuy" data-rebuy="${esc(pu.id)}">Blej sërish</button></td>
+      </tr>`;
+    }).join('');
+  }).join('');
+  const n = groups.length, total = groups.reduce((a, g) => a + g.count, 0);
+  $('#purchaseTable').innerHTML = `<p class="stat">${n} faturë · ${total} rreshta${f.length ? ' sipas filtrit' : ''}</p>
+    <div class="tablewrap"><table>
+    <thead><tr><th>Data</th><th>Furnitori</th><th>Artikujt</th><th class="r">Totali i faturës</th><th>Blerë nga</th><th>Fatura</th><th></th></tr></thead>
+    <tbody>${rows}</tbody></table></div>`;
 }
 
 /* ---------- Artikujt ---------- */
@@ -1064,30 +1220,164 @@ function renderDrawer() {
     </div>`;
 }
 
-/* ---------- Forma: blerje ---------- */
+/* ---------- Forma: faturë (dokument + grid rreshtash) ----------
+   Koka e faturës: furnitori, nr. fatura, data, kush e bleu, skedari, shënimi.
+   Poshtë: N rreshta artikujsh. Monedha është e dokumentit, jo e rreshtit.
+   Rreshti i parë mban ID-të historike (fpProduct, fpQty, fpUnit, fpPrice…). */
 function fillLists() {}
-function setCur(v) { $('#fpCur').value = v; $$('#curSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cur === v)); }
-const PICK = { product: ['#fpProduct', '#pkProduct'], supplier: ['#fpSupplier', '#pkSupplier'], buyer: ['#fpBuyer', '#pkBuyer'] };
-/* Kërkim live brenda formës (pa dropdown): lista del nën fushë ndërsa shkruan */
+function currency() { return (($('#fpCur') || {}).value || 'ALL'); }
+function setCur(v) { $('#fpCur').value = v; $$('#curSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cur === v)); renderTotal(); }
+const PICK = { supplier: ['#fpSupplier', '#pkSupplier'], buyer: ['#fpBuyer', '#pkBuyer'] };
+const findByName = (arr, name) => arr.find(x => norm(x.name) === norm(name));
+
+let editingPurchase = null, keptAtts = [], origAtts = [], pendingFiles = [];
+let autoTok = 0, autoFiles = [], autoSrcId = null, touched = false;
+
+/* --- rreshtat e faturës (modeli i formës; ruhet si rreshta të bazës) --- */
+function blankLine(init = {}) {
+  return {
+    id: init.id || null,
+    product: init.product || '',
+    qty: init.qty != null && init.qty !== '' ? String(init.qty) : '1',
+    unit: init.unit || 'copë',
+    price: init.price != null ? String(init.price) : ''
+  };
+}
+let FORM = { lines: [blankLine()] };
+const lineTotal = l => (+l.qty || 0) * (+l.price || 0);
+function renderGrid() {
+  if (!FORM.lines.length) FORM.lines.push(blankLine());
+  const box = $('#fpGrid');
+  if (box) box.innerHTML = FORM.lines.map(lineRowHTML).join('');
+  syncRow0();
+  renderTotal();
+}
+function lineRowHTML(l, i) {
+  const legacy = i === 0 ? ' id="fpProduct"' : '';
+  const idq = i === 0 ? ' id="fpQty"' : '';
+  const idu = i === 0 ? ' id="fpUnit"' : '';
+  const idp = i === 0 ? ' id="fpPrice"' : '';
+  const pk = i === 0 ? ' id="pkProduct"' : '';
+  return `<div class="lrow" data-line="${i}">
+    <span class="ln">${i + 1}</span>
+    <div class="lp">
+      <input class="field"${legacy} data-row="${i}" data-f="product" autocomplete="off" placeholder="p.sh. Kuzhinetë" aria-label="Artikulli i rreshtit ${i + 1}" value="${esc(l.product)}">
+      <div class="pks"${pk} data-pkbox="${i}"></div>
+    </div>
+    <input class="field num"${idq} data-row="${i}" data-f="qty" type="number" min="0" step="any" inputmode="decimal" aria-label="Sasia e rreshtit ${i + 1}" value="${esc(l.qty)}">
+    <input class="field"${idu} data-row="${i}" data-f="unit" list="unitList" autocomplete="off" aria-label="Njësia e rreshtit ${i + 1}" value="${esc(l.unit)}">
+    <input class="field num"${idp} data-row="${i}" data-f="price" type="number" min="0" step="any" inputmode="decimal" placeholder="0" aria-label="Çmimi për njësi i rreshtit ${i + 1}" value="${esc(l.price)}">
+    <span class="ltot num">${money(lineTotal(l), currency())}</span>
+    <button type="button" class="lx" data-rmline="${i}" aria-label="Hiq rreshtin ${i + 1}" title="Hiq rreshtin">✕</button>
+  </div>`;
+}
+/* ID-të e vjetra mbeten të mbushura — testet dhe skriptet e vjetra i lexojnë. */
+function syncRow0() {
+  const l = FORM.lines[0]; if (!l) return;
+  const put = (id, v) => { const el = $('#' + id); if (el) el.value = v; };
+  put('fpProduct', l.product || ''); put('fpQty', l.qty); put('fpUnit', l.unit || 'copë'); put('fpPrice', l.price == null ? '' : l.price);
+}
+function renderTotal() {
+  const el = $('#fpTotal'); if (!el) return;
+  const t = FORM.lines.reduce((s, l) => s + lineTotal(l), 0);
+  const any = FORM.lines.some(l => String(l.price || '').trim() !== '' && lineTotal(l) > 0);
+  el.textContent = (t > 0 || any) ? money(t, currency()) : '—';
+}
+function linesFromForm() {
+  $$('#fpGrid [data-row]').forEach(inp => {
+    const i = +inp.dataset.row, f = inp.dataset.f;
+    if (FORM.lines[i] && f) FORM.lines[i][f] = inp.value;
+  });
+  const first = FORM.lines[0];
+  if (first) {
+    const grab = (id, f) => { const el = $('#' + id); if (el) first[f] = el.value; };
+    grab('fpProduct', 'product'); grab('fpQty', 'qty'); grab('fpUnit', 'unit'); grab('fpPrice', 'price');
+  }
+  return FORM.lines;
+}
+const ROW0_ID = { product: 'fpProduct', qty: 'fpQty', unit: 'fpUnit', price: 'fpPrice' };
+function setLine(i, f, v) {
+  const l = FORM.lines[i]; if (!l) return;
+  l[f] = v;
+  /* Rreshti i parë i mban ID-të e vjetra njësoj si modeli i formës. */
+  if (i === 0 && ROW0_ID[f]) { const inp = $('#' + ROW0_ID[f]); if (inp && inp.value !== v) inp.value = v; }
+  if (f === 'qty' || f === 'price') {
+    touched = true;
+    const cell = document.querySelector(`#fpGrid .lrow[data-line="${i}"] .ltot`);
+    if (cell) cell.textContent = money(lineTotal(l), currency());
+    renderTotal();
+  }
+  if (f === 'product') { renderRowPick(i); productHint(); autoFromPair(); }
+}
+function addLine(init = {}) {
+  linesFromForm();                       // ruaj çfarë është shkruar para se të rindërtohet gridi
+  FORM.lines.push(blankLine(init));
+  renderGrid();
+  focusLine(FORM.lines.length - 1, 'product');
+  return FORM.lines.length - 1;
+}
+function removeLine(i) {
+  linesFromForm();
+  if (FORM.lines.length <= 1) { FORM.lines = [blankLine()]; }
+  else FORM.lines.splice(i, 1);
+  renderGrid();
+}
+function focusLine(i, f) {
+  const el = document.querySelector(`#fpGrid [data-row="${i}"][data-f="${f}"]`);
+  if (el && el.focus) el.focus();
+  if (el && el.select && f === 'qty') el.select();
+}
+
+/* Kërkim live i artikullit brenda rreshtit (pa dropdown). */
+function renderRowPick(i) {
+  const l = FORM.lines[i]; if (!l) return;
+  const box = document.querySelector(`#fpGrid [data-pkbox="${i}"]`); if (!box) return;
+  const v = String(l.product || '').trim();
+  const toks = norm(v).split(/\s+/).filter(Boolean);
+  if (!toks.length) { box.innerHTML = ''; return; }
+  const D = Store.data, m = maps();
+  let items = D.products.filter(p => toks.every(t => norm(p.name).includes(t)));
+  const exact = items.some(p => norm(p.name) === norm(v));
+  items = items.filter(p => norm(p.name) !== norm(v)).slice(0, 5);
+  const rows = items.map(p => {
+    const last = D.purchases.filter(x => x.productId === p.id).sort(byDateDesc)[0]; const s = last && m.sup[last.supplierId];
+    const sub = last ? `e fundit ${fmtDate(last.date)} · ${money(last.price, last.currency)}${s ? ' · ' + s.name : ''}` : '';
+    return `<button type="button" class="pk" data-pick="product" data-row="${i}" data-val="${esc(p.name)}">${hl(p.name, toks)}${sub ? `<small>${esc(sub)}</small>` : ''}</button>`;
+  }).join('');
+  const add = (v && !exact) ? `<button type="button" class="pk add" data-addnew="product" data-row="${i}" data-val="${esc(v)}">+ Shto “${esc(v)}” si artikull të ri</button>` : '';
+  box.innerHTML = rows + add;
+}
+function pickProduct(i, name) {
+  const l = FORM.lines[i]; if (!l) return;
+  linesFromForm();
+  l.product = name;
+  const box = document.querySelector(`#fpGrid [data-pkbox="${i}"]`); if (box) box.innerHTML = '';
+  renderGrid();
+  productHint(); autoFromPair();
+  focusLine(i, 'qty');
+}
+
+/* Kërkim live për furnitorin dhe personin që bleu (koka e faturës). */
 function renderPick(kind) {
-  const [ii, bb] = PICK[kind]; const v = $(ii).value.trim(); const box = $(bb); const D = Store.data;
+  const [ii, bb] = PICK[kind]; if (!ii) return;
+  const v = $(ii).value.trim(); const box = $(bb); const D = Store.data;
   const toks = norm(v).split(/\s+/).filter(Boolean);
   if (!toks.length && kind !== 'buyer') { box.innerHTML = ''; return; }
-  const m = maps(); let items = [];
-  if (kind === 'product') items = D.products.filter(p => toks.every(t => norm(p.name).includes(t))).map(p => {
-    const last = D.purchases.filter(x => x.productId === p.id).sort(byDateDesc)[0]; const s = last && m.sup[last.supplierId];
-    return { val: p.name, sub: last ? `e fundit ${fmtDate(last.date)} · ${money(last.price, last.currency)}${s ? ' · ' + s.name : ''}` : '' };
-  });
-  else if (kind === 'supplier') items = D.suppliers.filter(s => toks.every(t => norm(s.name + ' ' + (s.city || '')).includes(t))).map(s => ({ val: s.name, sub: s.city || '' }));
+  let items = [];
+  if (kind === 'supplier') items = D.suppliers.filter(s => toks.every(t => norm(s.name + ' ' + (s.city || '')).includes(t))).map(s => ({ val: s.name, sub: s.city || '' }));
   else items = [...new Set(D.purchases.map(x => x.buyer).filter(Boolean))].filter(b => toks.every(t => norm(b).includes(t))).map(b => ({ val: b, sub: '' }));
   const exact = items.some(i => norm(i.val) === norm(v)); items = items.filter(i => norm(i.val) !== norm(v)).slice(0, 5);
   const rows = items.map(i => `<button type="button" class="pk" data-pick="${kind}" data-val="${esc(i.val)}">${hl(i.val, toks)}${i.sub ? `<small>${esc(i.sub)}</small>` : ''}</button>`).join('');
-  const add = (kind !== 'buyer' && v && !exact) ? `<button type="button" class="pk add" data-addnew="${kind}" data-val="${esc(v)}">+ Shto “${esc(v)}” si ${kind === 'product' ? 'artikull të ri' : 'furnitor të ri'}</button>` : '';
+  const add = (kind === 'supplier' && v && !exact) ? `<button type="button" class="pk add" data-addnew="supplier" data-val="${esc(v)}">+ Shto “${esc(v)}” si furnitor të ri</button>` : '';
   box.innerHTML = rows + add;
 }
-const findByName = (arr, name) => arr.find(x => norm(x.name) === norm(name));
-let editingPurchase = null, keptAtts = [], origAtts = [], pendingFiles = [];
-let autoTok = 0, autoFiles = [], autoSrcId = null, touched = false;
+
+/* Skedarët e faturës lidhen me dokumentin: ruhen një herë, ndahen nga rreshtat. */
+function docAtts(lines) {
+  const seen = new Set(), out = [];
+  (lines || []).forEach(l => (l.attachments || []).forEach(a => { if (a && a.id && !seen.has(a.id)) { seen.add(a.id); out.push(a); } }));
+  return out;
+}
 function renderFormAtts() {
   const row = (name, size, key) => `<div class="attrow"><span>${esc(name)} <small style="display:inline;color:var(--muted)">${esc(fmtSize(size || 0))}</small></span><button type="button" class="linkbtn" data-rm-att="${key}">Hiq</button></div>`;
   $('#fpAtts').innerHTML = keptAtts.map((a, i) => row(a.name, a.size, 'k:' + i)).concat(pendingFiles.map((f, i) => row(f.name, f.size, 'n:' + i))).join('');
@@ -1099,50 +1389,70 @@ function addFormFiles(list) {
   else $('#fpErr').textContent = '';
   renderFormAtts();
 }
-/* Plotëso formën nga një blerje e mëparshme: data = sot, çmimi/sasia/njësia/monedha/foto nga hera e fundit. Gjithçka mbetet e ndryshueshme. */
+
+/* Plotëso formën nga një rresht i mëparshëm: data = sot, çmimi/sasia/njësia/
+   monedha dhe skedari i asaj fature. Gjithçka mbetet e ndryshueshme. */
 async function fillFrom(src) {
+  if (!src) return;
   const m = maps(); const tok = ++autoTok; const s = m.sup[src.supplierId];
-  $('#fpQty').value = src.qty; $('#fpUnit').value = src.unit || 'copë'; $('#fpPrice').value = src.price; setCur(src.currency || 'ALL');
+  const L = FORM.lines[0] || (FORM.lines[0] = blankLine());
+  L.product = (m.prod[src.productId] || {}).name || L.product;
+  L.qty = String(src.qty == null ? '' : src.qty);
+  L.unit = src.unit || 'copë';
+  L.price = String(src.price == null ? '' : src.price);
+  setCur(src.currency || 'ALL'); renderGrid();
   $('#fpDate').value = todayISO(); if (!$('#fpBuyer').value) $('#fpBuyer').value = src.buyer || '';
   pendingFiles = pendingFiles.filter(f => !autoFiles.includes(f)); autoFiles = [];
-  const hasFiles = (src.attachments || []).length > 0;
+  const srcAtts = docAtts(Store.docOf(src));
   const box = $('#fpAuto'); box.hidden = false;
-  box.textContent = `Plotësuar automatikisht nga blerja e ${fmtDate(src.date)}${s ? ' nga ' + s.name : ''}. Data është sot. Ndrysho çmimin, sasinë, datën ose foton para se ta ruash.` + (hasFiles ? ' Foto/dokumenti i asaj blerjeje po kopjohet; hiqe nëse nuk duhet.' : '');
+  box.textContent = `Plotësuar automatikisht nga fatura e ${fmtDate(src.date)}${s ? ' nga ' + s.name : ''}. Data është sot. Ndrysho çmimin, sasinë, datën ose skedarin para se ta ruash.` + (srcAtts.length ? ' Skedari i asaj fature po kopjohet; hiqe nëse nuk duhet.' : '');
   const files = [];
-  for (const a of (src.attachments || [])) { try { const b = await Files.get(a.id); if (b) files.push(new File([b], a.name, { type: a.type || b.type })); } catch (e) {} }
+  for (const a of srcAtts) { try { const b = await Files.get(a.id); if (b) files.push(new File([b], a.name, { type: a.type || b.type })); } catch (e) {} }
   if (tok !== autoTok) return;
   autoFiles = files; pendingFiles.push(...files); renderFormAtts();
 }
 function autoFromPair() {
   if (editingPurchase || touched) return;
-  const D = Store.data; const p = findByName(D.products, $('#fpProduct').value.trim()), s = findByName(D.suppliers, $('#fpSupplier').value.trim());
+  const D = Store.data;
+  const p = findByName(D.products, String((FORM.lines[0] || {}).product || '').trim());
+  const s = findByName(D.suppliers, $('#fpSupplier').value.trim());
   if (!p || !s) return;
   const last = D.purchases.filter(x => x.productId === p.id && x.supplierId === s.id).sort(byDateDesc)[0];
   if (!last || last.id === autoSrcId) return;
   autoSrcId = last.id; fillFrom(last);
 }
+
 function openPurchase(o = {}) {
-  fillLists(); editingPurchase = o.id || null;
-  const pu = o.id ? Store.data.purchases.find(p => p.id === o.id) : null; const m = maps();
-  const rb = o.rebuy ? Store.data.purchases.find(p => p.id === o.rebuy) : null;
+  fillLists();
+  const D = Store.data, m = maps();
+  const src = o.id ? D.purchases.find(p => p.id === o.id) : null;
+  const docLines = src ? Store.docOf(src) : [];
+  editingPurchase = src ? Store.docKey(src) : null;
+  const rb = o.rebuy ? D.purchases.find(p => p.id === o.rebuy) : null;
   if (rb) { o.productName = (m.prod[rb.productId] || {}).name || ''; o.supplierId = rb.supplierId; }
-  $('#dpTitle').textContent = pu ? 'Ndrysho blerjen' : 'Regjistro blerje';
-  $('#fpProduct').value = pu ? (m.prod[pu.productId] || {}).name || '' : (o.productName || '');
-  $('#fpSupplier').value = pu ? (m.sup[pu.supplierId] || {}).name || '' : (o.supplierId && m.sup[o.supplierId] ? m.sup[o.supplierId].name : '');
-  $('#fpDate').value = pu ? pu.date : todayISO();
-  $('#fpInvoice').value = pu ? pu.invoice || '' : '';
-  $('#fpQty').value = pu ? pu.qty : 1;
-  $('#fpUnit').value = pu ? pu.unit || 'copë' : 'copë';
-  $('#fpPrice').value = pu ? pu.price : '';
-  setCur(pu ? pu.currency || 'ALL' : 'ALL');
-  $('#fpBuyer').value = pu ? pu.buyer || '' : (Store.data.meta.lastBuyer || '');
-  $('#fpNote').value = pu ? pu.note || '' : '';
+  const head = docLines.length ? docLines[0] : null;
+
+  $('#dpTitle').textContent = head ? 'Ndrysho faturën' : 'Regjistro faturë';
+  $('#fpSupplier').value = head ? (m.sup[head.supplierId] || {}).name || '' : (o.supplierId && m.sup[o.supplierId] ? m.sup[o.supplierId].name : '');
+  $('#fpInvoice').value = head ? head.invoice || '' : '';
+  $('#fpDate').value = head ? head.date || '' : todayISO();
+  $('#fpBuyer').value = head ? head.buyer || '' : (D.meta.lastBuyer || '');
+  $('#fpNote').value = head ? head.note || '' : '';
+  setCur(head ? head.currency || 'ALL' : 'ALL');
+
+  FORM.lines = head
+    ? docLines.map(l => blankLine({ id: l.id, product: (m.prod[l.productId] || {}).name || '', qty: l.qty, unit: l.unit || 'copë', price: l.price }))
+    : [blankLine({ product: o.productName || '' })];
+
+  keptAtts = head ? docAtts(docLines).map(a => Object.assign({}, a)) : [];
+  origAtts = head ? docAtts(docLines).map(a => Object.assign({}, a)) : [];
+  pendingFiles = []; autoFiles = []; autoSrcId = null; touched = false; autoTok++;
+  $('#fpAuto').hidden = true; $('#fpErr').textContent = ''; $('#fpFiles').value = '';
+  renderFormAtts(); renderGrid();
   ['fpSupPhone', 'fpSupCity', 'fpSupAddr', 'fpSupLoc'].forEach(i => $('#' + i).value = '');
-  $('#fpErr').textContent = ''; syncSupplierBlock(); productHint();
-  keptAtts = pu ? [...(pu.attachments || [])] : []; origAtts = [...keptAtts]; pendingFiles = []; $('#fpFiles').value = ''; renderFormAtts();
-  touched = false; autoSrcId = null; autoFiles = []; autoTok++; $('#fpAuto').hidden = true;
-  if (rb) { autoSrcId = rb.id; fillFrom(rb); }
+  syncSupplierBlock(); productHint();
   $('#dPurchase').showModal();
+  if (rb) { autoSrcId = rb.id; fillFrom(rb); }
   (o.rebuy ? $('#fpPrice') : o.productName ? $('#fpSupplier') : $('#fpProduct')).focus();
 }
 function syncSupplierBlock() {
@@ -1150,24 +1460,55 @@ function syncSupplierBlock() {
   $('#newSup').hidden = !v || !!findByName(Store.data.suppliers, v);
 }
 function productHint() {
-  const v = $('#fpProduct').value.trim(); const el = $('#fpHint'); el.textContent = '';
+  const el = $('#fpHint'); if (el) el.textContent = '';
+  const L = FORM.lines[0]; if (!L) return;
+  const v = String(L.product || '').trim(); if (!v) return;
   const p = findByName(Store.data.products, v); if (!p) return;
   const last = Store.data.purchases.filter(x => x.productId === p.id).sort(byDateDesc)[0]; if (!last) return;
   const s = maps().sup[last.supplierId];
-  el.textContent = `Blerja e fundit: ${money(last.price, last.currency)} për ${last.unit || 'copë'} nga ${s ? s.name : '—'}, ${fmtDate(last.date)}.`;
-  if (!editingPurchase && !$('#fpPrice').value) { $('#fpUnit').value = last.unit || 'copë'; setCur(last.currency || 'ALL'); }
+  if (el) el.textContent = `Blerja e fundit: ${money(last.price, last.currency)} për ${last.unit || 'copë'} nga ${s ? s.name : '—'}, ${fmtDate(last.date)}.`;
+  if (!editingPurchase && !String(L.price || '').trim()) {
+    L.unit = last.unit || 'copë';
+    const ui = document.querySelector('#fpGrid [data-row="0"][data-f="unit"]');
+    if (ui) ui.value = L.unit;
+    setCur(last.currency || 'ALL');
+  }
 }
+
+/* Rreshti është i njëjtë me të ruajturin? (që të mos rishkruhen rreshtat e tjerë) */
+function sameLine(base, rec) {
+  return Object.keys(rec).every(k => {
+    const a = base[k] === undefined ? null : base[k], b = rec[k] === undefined ? null : rec[k];
+    return JSON.stringify(a) === JSON.stringify(b);
+  });
+}
+
+/* Një “Ruaj faturën” shkruan të gjitha rreshtat — një kalim i Net.flush. */
 async function savePurchase(e) {
-  e.preventDefault(); const D = Store.data; const err = $('#fpErr');
-  const pn = $('#fpProduct').value.trim(), sn = $('#fpSupplier').value.trim(), buyer = $('#fpBuyer').value.trim();
-  const qty = parseFloat($('#fpQty').value), price = parseFloat($('#fpPrice').value), date = $('#fpDate').value;
-  if (!pn) return err.textContent = 'Shkruaj emrin e produktit.';
+  if (e && e.preventDefault) e.preventDefault();
+  const D = Store.data; const err = $('#fpErr');
+  const sn = $('#fpSupplier').value.trim(), buyer = $('#fpBuyer').value.trim(), date = $('#fpDate').value;
+  const cur = currency(), invoice = $('#fpInvoice').value.trim(), note = $('#fpNote').value.trim();
   if (!sn) return err.textContent = 'Zgjidh ose shkruaj furnitorin.';
-  if (!date) return err.textContent = 'Zgjidh datën e blerjes.';
-  if (!(qty > 0)) return err.textContent = 'Sasia duhet të jetë më e madhe se zero.';
-  if (!(price >= 0) || isNaN(price)) return err.textContent = 'Shkruaj çmimin për njësi.';
+  if (!date) return err.textContent = 'Zgjidh datën e faturës.';
   if (!buyer) return err.textContent = 'Shkruaj kush e bleu.';
-  const unit = $('#fpUnit').value.trim() || 'copë';
+
+  const used = [];
+  const lines = linesFromForm();
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]; const name = String(l.product || '').trim();
+    const qty = parseFloat(l.qty), price = parseFloat(l.price);
+    if (!name) {
+      /* Rresht krejt bosh → hiqet. Rresht me çmim pa artikull → gabim. */
+      if (!(price > 0)) continue;
+      return err.textContent = `Shkruaj artikullin te rreshti ${i + 1}.`;
+    }
+    if (!(qty > 0)) return err.textContent = `Sasia te rreshti ${i + 1} duhet të jetë më e madhe se zero.`;
+    if (!(price >= 0) || isNaN(price)) return err.textContent = `Shkruaj çmimin për njësi te rreshti ${i + 1}.`;
+    used.push({ id: l.id || null, name, qty, price, unit: String(l.unit || '').trim() || 'copë' });
+  }
+  if (!used.length) return err.textContent = 'Shto të paktën një artikull në faturë.';
+
   const removed = origAtts.filter(a => !keptAtts.some(k => k.id === a.id)); const newAtts = [];
   try {
     for (const f of pendingFiles) { const id = uid(); await Files.put(id, f); newAtts.push({ id, name: f.name, type: f.type || guessMime(f.name), size: f.size }); }
@@ -1175,15 +1516,45 @@ async function savePurchase(e) {
     newAtts.forEach(a => Files.del(a.id).catch(() => {}));
     return err.textContent = 'Skedari nuk u ruajt në shfletues. Provo një skedar më të vogël ose hiqe.';
   }
-  let p = findByName(D.products, pn);
-  if (!p) { p = { id: uid(), name: pn, unit, updatedAt: nowISO() }; D.products.push(p); }
+  const atts = [...keptAtts, ...newAtts];
+
   let s = findByName(D.suppliers, sn);
   if (!s) { s = { id: uid(), name: sn, phone: $('#fpSupPhone').value.trim(), city: $('#fpSupCity').value.trim(), address: $('#fpSupAddr').value.trim(), location: $('#fpSupLoc').value.trim(), note: '', updatedAt: nowISO() }; D.suppliers.push(s); }
-  const rec = { productId: p.id, supplierId: s.id, date, qty, unit, price, currency: $('#fpCur').value, invoice: $('#fpInvoice').value.trim(), buyer, note: $('#fpNote').value.trim(), attachments: [...keptAtts, ...newAtts], updatedAt: nowISO() };
-  if (editingPurchase) { const i = D.purchases.findIndex(x => x.id === editingPurchase); if (i > -1) D.purchases[i] = Object.assign(D.purchases[i], rec); }
-  else D.purchases.push(Object.assign({ id: uid() }, rec));
-  D.meta.lastBuyer = buyer;
-  Store.save(); removed.forEach(a => Files.del(a.id).catch(() => {})); $('#dPurchase').close(); toast('Blerja u ruajt'); renderAll();
+
+  const docId = editingPurchase || uid();
+  const prev = {}, prevLines = [];
+  D.purchases.forEach(x => { if (Store.docKey(x) === docId) { prev[x.id] = x; prevLines.push(x); } });
+
+  const rows = used.map((l, i) => {
+    let p = findByName(D.products, l.name);
+    if (!p) { p = { id: uid(), name: l.name, unit: l.unit, updatedAt: nowISO() }; D.products.push(p); }
+    const rec = {
+      documentId: docId, lineNo: i + 1, productId: p.id, supplierId: s.id, date,
+      qty: l.qty, unit: l.unit, price: l.price, currency: cur,
+      invoice, buyer, note, attachments: atts
+    };
+    const base = (l.id && prev[l.id]) ? prev[l.id] : null;
+    return Object.assign({}, base || { id: l.id || uid() }, rec,
+      { updatedAt: base && sameLine(base, rec) ? base.updatedAt : nowISO() });
+  });
+
+  /* Të gjitha rreshtat e vjetra të dokumentit zëvendësohen me të rejat. */
+  D.purchases = D.purchases.filter(x => Store.docKey(x) !== docId);
+  rows.forEach(r => D.purchases.push(r));
+  D.meta.lastBuyer = buyer; editingPurchase = null;
+  Store.save(); removed.forEach(a => Files.del(a.id).catch(() => {}));
+  $('#dPurchase').close(); toast(rows.length === 1 ? 'Fatura u ruajt' : `Fatura u ruajt · ${rows.length} rreshta`); renderAll();
+}
+
+/* Fshirja e një dokumenti heq të gjitha rreshtat dhe skedarët e faturës. */
+function deleteDocument(docId) {
+  const lines = Store.data.purchases.filter(x => Store.docKey(x) === docId);
+  if (!lines.length) return;
+  const n = lines.length;
+  if (!confirm(n > 1 ? `Të fshihet fatura me ${n} rreshta?` : 'Të fshihet kjo faturë?')) return;
+  docAtts(lines).forEach(a => Files.del(a.id).catch(() => {}));
+  Store.data.purchases = Store.data.purchases.filter(x => Store.docKey(x) !== docId);
+  Store.save(); toast(n > 1 ? `Fatura u fshi · ${n} rreshta` : 'Fatura u fshi'); renderAll();
 }
 
 /* ---------- Forma: artikull (shtim i shpejtë) ---------- */
@@ -1293,20 +1664,32 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button, a'); if (!t) return;
   if (t.dataset.tab) return setTab(t.dataset.tab);
   if (t.dataset.pick) {
-    const k = t.dataset.pick; $(PICK[k][0]).value = t.dataset.val; $(PICK[k][1]).innerHTML = '';
-    syncSupplierBlock(); productHint(); autoFromPair();
-    if (k === 'product') $('#fpSupplier').focus(); else if (k === 'supplier') $('#fpPrice').focus();
+    const k = t.dataset.pick;
+    if (k === 'product') return pickProduct(+(t.dataset.row || 0), t.dataset.val);
+    $(PICK[k][0]).value = t.dataset.val; $(PICK[k][1]).innerHTML = '';
+    syncSupplierBlock(); autoFromPair();
+    if (k === 'supplier') $('#fpPrice').focus();
     return;
   }
   if (t.dataset.addnew) {
-    const name = t.dataset.val; $(PICK[t.dataset.addnew][1]).innerHTML = '';
-    if (t.dataset.addnew === 'product') return openProductForm({ name, unit: $('#fpUnit').value, hook: pr => { $('#fpProduct').value = pr.name; $('#fpUnit').value = pr.unit || 'copë'; productHint(); autoFromPair(); $('#fpSupplier').focus(); } });
+    const name = t.dataset.val;
+    if (t.dataset.addnew === 'product') {
+      const i = +(t.dataset.row || 0);
+      const box = document.querySelector(`#fpGrid [data-pkbox="${i}"]`); if (box) box.innerHTML = '';
+      return openProductForm({ name, unit: (FORM.lines[i] || {}).unit || 'copë', hook: pr => pickProduct(i, pr.name) });
+    }
+    $(PICK.supplier[1]).innerHTML = '';
     return openSupplierForm(null, { name, hook: n => { $('#fpSupplier').value = n; syncSupplierBlock(); autoFromPair(); $('#fpPrice').focus(); } });
   }
   if (t.dataset.prunit) { $('#fprUnit').value = t.dataset.prunit; return; }
   if (t.dataset.editProduct) return openProductForm({ id: t.dataset.editProduct });
-  if (t.dataset.unit) { $('#fpUnit').value = t.dataset.unit; return; }
+  if (t.dataset.unit) { setLine(+(t.dataset.row || 0), 'unit', t.dataset.unit); return; }
   if (t.dataset.cur) { setCur(t.dataset.cur); return; }
+  if (t.dataset.addline !== undefined) { addLine(); return; }
+  if (t.dataset.rmline !== undefined) { removeLine(+t.dataset.rmline); return; }
+  if (t.dataset.expandDoc) { const id = t.dataset.expandDoc; state.openDocs.has(id) ? state.openDocs.delete(id) : state.openDocs.add(id); return renderPurchases(); }
+  if (t.dataset.editDoc) { const ln = Store.data.purchases.find(x => Store.docKey(x) === t.dataset.editDoc); if (ln) openPurchase({ id: ln.id }); return; }
+  if (t.dataset.delDoc) { deleteDocument(t.dataset.delDoc); return; }
   if (t.dataset.rebuy) return openPurchase({ rebuy: t.dataset.rebuy });
   if (t.dataset.sort) { prSort.dir = prSort.key === t.dataset.sort ? -prSort.dir : 1; prSort.key = t.dataset.sort; return renderProducts(); }
   if (t.dataset.att) return openAtt(t.dataset.att);
@@ -1315,7 +1698,7 @@ document.addEventListener('click', e => {
   if (t.dataset.q !== undefined) return goSearch(t.dataset.q);
   if (t.dataset.expand) { const id = t.dataset.expand; state.expanded.has(id) ? state.expanded.delete(id) : state.expanded.add(id); return renderSearch(); }
   if (t.dataset.editPurchase) return openPurchase({ id: t.dataset.editPurchase });
-  if (t.dataset.delPurchase) { if (confirm('Të fshihet kjo blerje?')) { const gone = Store.data.purchases.find(p => p.id === t.dataset.delPurchase); (gone && gone.attachments || []).forEach(a => Files.del(a.id).catch(() => {})); Store.data.purchases = Store.data.purchases.filter(p => p.id !== t.dataset.delPurchase); Store.save(); toast('Blerja u fshi'); renderAll(); } return; }
+  if (t.dataset.delPurchase) { const gone = Store.data.purchases.find(p => p.id === t.dataset.delPurchase); if (gone) deleteDocument(Store.docKey(gone)); return; }
   if (t.dataset.editSupplier) return openSupplierForm(t.dataset.editSupplier);
   if (t.dataset.close) return $('#' + t.dataset.close).close();
   if (t.dataset.copy) { (navigator.clipboard ? navigator.clipboard.writeText(t.dataset.copy) : Promise.reject()).then(() => toast('Numri u kopjua'), () => toast(t.dataset.copy)); return; }
@@ -1353,16 +1736,41 @@ $('#fPurchase').addEventListener('submit', savePurchase);
 $('#fpFiles').addEventListener('change', e => { addFormFiles(e.target.files); e.target.value = ''; });
 $('#fSupplier').addEventListener('submit', saveSupplier);
 $('#fsDelete').addEventListener('click', deleteSupplier);
-$('#fpSupplier').addEventListener('input', syncSupplierBlock);
-['fpSupplier', 'fpProduct'].forEach(i => { $('#' + i).addEventListener('input', autoFromPair); $('#' + i).addEventListener('change', autoFromPair); });
+$('#fpSupplier').addEventListener('input', () => { syncSupplierBlock(); autoFromPair(); });
 Object.keys(PICK).forEach(k => {
   const inp = $(PICK[k][0]), box = $(PICK[k][1]);
   inp.addEventListener('input', () => renderPick(k)); inp.addEventListener('focus', () => renderPick(k));
   inp.addEventListener('blur', () => { box.innerHTML = ''; });
   box.addEventListener('mousedown', e => e.preventDefault());
 });
-['fpPrice', 'fpQty'].forEach(i => $('#' + i).addEventListener('input', () => { touched = true; }));
-$('#fpProduct').addEventListener('input', productHint);
+/* Gridi i fatura: çdo tastierë përditëson vetëm modelin e rreshtit — pa
+   rindërtuar gridin, që shkrimi të mos ndërpritet. */
+$('#fpGrid').addEventListener('input', e => {
+  const t = e.target; if (!t || !t.dataset || t.dataset.f === undefined) return;
+  setLine(+t.dataset.row, t.dataset.f, t.value);
+});
+$('#fpGrid').addEventListener('change', e => {
+  const t = e.target; if (!t || !t.dataset || t.dataset.f !== 'product') return;
+  const i = +t.dataset.row;
+  setLine(i, 'product', t.value);
+  const box = document.querySelector(`#fpGrid [data-pkbox="${i}"]`); if (box) box.innerHTML = '';
+});
+/* Enter: në rreshtin e fundit shton rresht të re; ndryshe kalon te rreshti
+   pasardhës në të njëjtën kolonë. Tab / Shift+Tab mbeten të shfletuesit. */
+$('#fpGrid').addEventListener('keydown', e => {
+  const t = e.target; if (!t || !t.dataset || t.dataset.f === undefined) return;
+  if (e.key !== 'Enter') return;
+  e.preventDefault();
+  const i = +t.dataset.row, f = t.dataset.f;
+  if (i >= FORM.lines.length - 1) addLine();
+  else focusLine(i + 1, f);
+});
+$('#fpGrid').addEventListener('focusout', e => {
+  const t = e.target;
+  if (t && t.dataset && t.dataset.f === 'product') setTimeout(() => {
+    const box = document.querySelector(`#fpGrid [data-pkbox="${t.dataset.row}"]`); if (box) box.innerHTML = '';
+  }, 120);
+});
 $('#importFile').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
 $('#demoClear').addEventListener('click', () => { Files.clear().catch(() => {}); Store.replace({ meta: { demo: false, lastBuyer: '', seeded: true } }); renderAll(); toast('Gati. Regjistro blerjen e parë.'); });
 document.addEventListener('keydown', e => {
@@ -1403,8 +1811,9 @@ async function connTest() {
     Net.chip('Online · live', 'ok');
     Net.listen();
     sayState('Lidhja punon. Të dhënat ruhen te Supabase dhe i sheh i gjithë stafi.', 'ok');
-    showDiag(null); showBanner('');
-    toast('Lidhja me bazën punon');
+    showDiag(Net.schemaOld ? migrationDiag() : null); showBanner('');
+    if (Net.schemaOld) toast('Baza ka skemë të vjetër: ekzekuto migrimin (schema.sql) në SQL Editor.');
+    else toast('Lidhja me bazën punon');
     return true;
   } catch (e) {
     connFail(e.diag || explainDbError(e));
@@ -1456,7 +1865,7 @@ async function boot() {
     Net.online = true; bootTries = 0; LAST_DIAG = null;
     Net.chip('Online · live', 'ok');
     sayState('Lidhja punon. Të dhënat ruhen te Supabase dhe i sheh i gjithë stafi.', 'ok');
-    showDiag(null); showBanner('');
+    showDiag(Net.schemaOld ? migrationDiag() : null); showBanner('');
     Net.listen();
   } catch (e) {
     const d = e.diag || explainDbError(e);
@@ -1492,6 +1901,7 @@ $('#connForm').addEventListener('submit', e => {
 });
 try { window.addEventListener('online', () => { if (!Net.online) boot(); }); } catch (e) {}
 
+renderGrid();          // gridi i faturës është gati edhe para se të hapet dialogu
 boot();
 
 </script>
