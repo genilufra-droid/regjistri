@@ -94,6 +94,7 @@ global.__t = async (n, fn) => {
   catch (e) { failed++; results.push(['❌', n, (e && e.message || String(e)).slice(0, 140)]); }
 };
 global.__A = assert;
+global.__REAL = fs.readFileSync(path.join(__dirname, 'fixtures', 'fature-bills.txt'), 'utf8').replace(/^#.*$/gm, '');
 global.__W = W;
 global.__File = File;
 global.__Uint8Array = Uint8Array;
@@ -207,6 +208,73 @@ const TESTS = `
     A.ok(ours.every(p => p.buyer === 'Arbeni' && p.currency === 'ALL'));
     A.strictEqual(__uploads(), 1, 'skedari u ngarkua ' + __uploads() + ' herë');
     A.strictEqual((ours[0].attachments || []).length, 1);
+  });
+
+  /* ---------------- fatura e vërtetë (bills.al / E-Fiskal) ---------------- */
+  const REAL = __REAL;
+
+  await T('Faturë e vërtetë fiskale: furnitori, numri, data, monedha', async () => {
+    const p = parseInvoice(REAL, []);
+    A.strictEqual(p.supplier, 'FURNITOR SHEMBULL', 'furnitori: ' + p.supplier);
+    A.strictEqual(p.invoice, '2683/2026', 'numri: ' + p.invoice);
+    A.strictEqual(p.date, '2026-11-06', 'data: ' + p.date + ' (jo afati i pagesës 16.11.2026)');
+    A.strictEqual(p.currency, 'EUR');
+    A.strictEqual(p.total, 10681.34, 'totali: ' + p.total);
+  });
+
+  await T('Faturë e vërtetë: 4 rreshta me sasi, njësi e çmim të saktë', async () => {
+    const p = parseInvoice(REAL, []);
+    A.strictEqual(p.rows.length, 4, 'rreshtat: ' + JSON.stringify(p.rows));
+    A.strictEqual(p.rows[0].product, 'PALETA PLASTIKE TE REJA TE ZEZA');
+    A.strictEqual(+p.rows[0].qty, 403);
+    A.strictEqual(+p.rows[0].price, 21.56);
+    A.strictEqual(p.rows[0].unit, 'copë');
+    A.strictEqual(+p.rows[1].qty, 4000);
+    A.strictEqual(+p.rows[1].price, 0.375, 'çmimi 0.375 nuk duhet bërë 375');
+    A.strictEqual(+p.rows[2].price, 141.67);
+    A.strictEqual(p.rows[3].unit, 'kg');
+    A.strictEqual(+p.rows[3].price, 4.1866);
+  });
+
+  await T('Kolonat e PDF-së rindërtohen sipas koordinatave (x,y)', async () => {
+    /* copa teksti siç i jep pdf.js: y njësoj = i njëjti rresht; x = kolona */
+    const items = [
+      { str: 'Nr', width: 12, transform: [1, 0, 0, 1, 18, 555] },
+      { str: 'PERSHKRIMI', width: 55, transform: [1, 0, 0, 1, 135, 555] },
+      { str: 'SASIA', width: 30, transform: [1, 0, 0, 1, 286, 555] },
+      { str: 'CMIMI', width: 30, transform: [1, 0, 0, 1, 341, 555] },
+      { str: '1', width: 5, transform: [1, 0, 0, 1, 21, 533] },
+      { str: 'PALETA PLASTIKE TE REJA', width: 66, transform: [1, 0, 0, 1, 113, 533] },
+      { str: 'TE ZEZA', width: 42, transform: [1, 0, 0, 1, 150, 525] },
+      { str: 'cope', width: 20, transform: [1, 0, 0, 1, 241, 533] },
+      { str: '403', width: 14, transform: [1, 0, 0, 1, 294, 533] },
+      { str: '141.666666', width: 40, transform: [1, 0, 0, 1, 332, 533] },
+      { str: '667', width: 14, transform: [1, 0, 0, 1, 349, 525] }
+    ];
+    const lines = pdfLinesFromItems(items);
+    A.ok(lines.some(l => /PALETA PLASTIKE TE REJA TE ZEZA/.test(l)), 'teksti i mbështjellë: ' + JSON.stringify(lines));
+    A.ok(lines.some(l => /141\.666666667/.test(l)), 'numri i prerë: ' + JSON.stringify(lines));
+    const p = parseInvoice(lines.join('\\n'), []);
+    A.strictEqual(p.rows.length, 1, 'rreshta: ' + JSON.stringify(p.rows));
+    A.strictEqual(+p.rows[0].qty, 403);
+  });
+
+  await T('Fatura e vërtetë plotëson formularin dhe ruhet me 4 rreshta', async () => {
+    const p = parseInvoice(REAL, []);
+    applyScanned(Object.assign({}, p, { lines: p.rows }));
+    A.strictEqual(document.getElementById('fpSupplier').value, 'FURNITOR SHEMBULL');
+    A.strictEqual(document.getElementById('fpInvoice').value, '2683/2026');
+    A.strictEqual(document.getElementById('fpDate').value, '2026-11-06');
+    A.strictEqual(document.getElementById('fpCur').value, 'EUR');
+    A.strictEqual(FORM.lines.length, 4);
+    const before = __db.purchases.length;
+    document.getElementById('fpBuyer').value = 'Arbeni';
+    await savePurchase({ preventDefault() {} });
+    await __W(700);
+    const ours = __db.purchases.filter(x => x.invoice === '2683/2026');
+    A.strictEqual(ours.length, 4, 'në bazë: ' + ours.length);
+    A.strictEqual(new Set(ours.map(x => x.documentId)).size, 1);
+    A.strictEqual(__db.purchases.length, before + 4);
   });
 
   __done();

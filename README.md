@@ -121,17 +121,28 @@ Te skeda **Blerjet** (butoni **📷 Skano faturën**) ose brenda formularit të 
 
 | Rruga | Kur | Saktësia |
 |---|---|---|
-| **PDF me tekst** (fatura nga sistemi i furnitorit) | gjithmonë e para | shumë e lartë — lexohet teksti origjinal, pa OCR |
-| **Foto / PDF i skanuar** | kur s’ka tekst | OCR me Tesseract.js (shqip + anglisht), i mirë për kokën e faturës, i ndryshëm për tabela |
+| **PDF me tekst** (bills.al, E-Fiskal, fatura nga sistemi i furnitorit) | provohet e para | shumë e lartë — lexohet teksti origjinal, pa OCR |
+| **Foto / PDF i skanuar** | kur s’ka tekst | OCR me Tesseract.js (shqip + anglisht) |
 | **Ngjit tekstin** | kur CDN-ja nuk hapet ose OCR-i ngatërron | e njëjta logjikë, tekst i sigurt |
 
+### Çfarë kupton lexuesi te faturat shqipe
+
+- **Kolonat e PDF-së** rindërtohen sipas koordinatave (x, y): teksti i mbështjellë bashkohet,
+  numri i prerë në dy rreshta (`141.666` + `667`) ribashkohet — prandaj rreshtat e
+  `NJESIA · SASIA · CMIMI · VLERA PA TVSH · TVSH · VLERA ME TVSH` dalin si tabelë e vërtetë.
+- **Rreshtat** njihen me aritmetikë: provohen `sasi × çmim = total`, `sasi × çmim = neto`
+  dhe `neto + TVSH = bruto`. Kështu edhe një rresht me 5 numra (sasi, çmim, neto, TVSH, bruto)
+  lexohet saktë; çmimi mbetet `0.375` e nuk bëhet `375`.
+- **Data** merret nga “Data:” e faturës — **jo** nga “Afati i pagesës” (16.11 ≠ 06.11).
+- **Numri i faturës**: `Nr i Fatures: 2683/2026`, `FATURË TATIMORE Nr. F-2026-0412`, `AO-99`…
+- **Furnitori**: “Emri i Shitesit / Furnitori / Shitësi” ose emri i njohur nga lista jote.
+- **Monedha**: “Monedha: EUR” (edhe kur fatura shfaq edhe totalin në Lekë).
+- **Kontroll totali**: nëse shuma e rreshtave nuk përputhet me totalin e faturës (>1%),
+  skaneri të paralajmëron — shenjë se mungon një rresht ose një çmim.
+
 - **Pa server, pa çelës API, pa kosto:** OCR-i dhe lexuesi i PDF-së shkarkohen vetëm herën e
-  parë (~5–8 MB) nga CDN-ja dhe punojnë në pajisje. Nëse interneti nuk i hap, skaneri të thotë
-  ta provosh “Ngjit tekstin e faturës”.
+  parë (~5–8 MB) nga CDN-ja dhe punojnë në pajisje; ka edhe CDN rezervë.
 - **Gjithmonë konfirmon njeriu** — asnjë faturë nuk ruhet vetë.
-- **Mosbesim ndaj tabelave:** numri, data e furnitori dalin pothuajse gjithmonë; rreshtat
-  kontrolloji (sidomos zbritjet e TVSH-në). Totali i lexuar shfaqet pranë totalit të rreshtave
-  që të krahasohen.
 - **Ndryshim fature ekzistuese:** nëse fatura ka rreshta, faqja kërkon konfirmim para se t’i
   zëvendësojë.
 
@@ -169,6 +180,7 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
 | `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
 | `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
 | `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |
-| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur (7 prova) |
+| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur (11 prova, me faturë reale fiskale) |
+| `tests/fixtures/fature-bills.txt` | tekst i një PDF-je të vërtetë fiskale (identifikuesit e zëvendësuar) |
 | `tests/live.test.js` | provë e vërtetë kundër projektit (7 prova) — `SUPABASE_URL=… SUPABASE_KEY=… node tests/live.test.js` |
 | `tests/staf.test.js` | provë me dy “pajisje” kundër bazës reale (17 prova) |
