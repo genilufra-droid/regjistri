@@ -49,6 +49,7 @@ const memStore = {
   removeItem: k => { MEM.delete(k); }
 };
 global.window = {
+  __skipBucketProbe: true,      // provat nuk shkojnë në rrjet
   localStorage: memStore,
   SUPABASE_URL: 'https://demo.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_demo1234567890abcdef',

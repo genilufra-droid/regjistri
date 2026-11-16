@@ -12,10 +12,11 @@ Stafi  →  https://biobes.github.io/regjistri   (GitHub Pages — vetëm index.
 ```
 
 > **Gjendja e bazës (16 nëntor 2026):** projekti `vikcvnioouxnchwrnahk` **u rikthye dhe
-> punon** — URL-ja dhe çelësi publik te `docs/index.html` janë të vlefshme, tabelat
-> (`products`, `suppliers`, `purchases` me `documentId`/`lineNo`, `meta`) përgjigjen.
-> Mungon vetëm bucket-i **`fatura`** (ruajtja e skedarëve) — hap `UDHEZUES-SUPABASE.md`
-> §“Projekti i vjetër u rikthye” dhe ekzekuto bllokun e Shtojcës A.
+> punon** — URL-ja dhe çelësi publik te `docs/index.html` janë të vlefshme; tabelat
+> (`products`, `suppliers`, `purchases` me `documentId`/`lineNo`, `meta`) përgjigjen dhe
+> bucket-i **`fatura`** i skedarëve u krijua e u verifikua (publik, `NoSuchKey` për objekt
+> që s’ekziston). *Provo lidhjen* e kontrollon vetë bucket-in dhe, po të mungojë, jep
+> bllokun SQL për ta krijuar.
 >
 > **Shfaqet “Baza nuk u arrit”?** Hap
 > [panelin e Supabase](https://supabase.com/dashboard) dhe shiko nëse projekti
@@ -193,6 +194,8 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
   ndryshuar · tabela që mungojnë · pa internet) dhe me butonat *Provo lidhjen*,
   *Ndrysho lidhjen*, *Shkarko kopje rezervë*;
 - te **Të dhënat → Lidhja me bazën** ka hapat e rregullimit dhe detajin teknik;
+- *Provo lidhjen* kontrollon edhe bucket-in e faturave: nëse mungon, tabelat mbeten
+  “Online” por del paralajmërimi “skedarët e faturave nuk ruhen” me bllokun SQL;
 - faqja hapet me **kopjen e fundit vendore** dhe blerjet e reja **ruhen në
   pajisje**, pastaj dërgohen vetë kur kthehet lidhja;
 - URL-në dhe çelësin e ri mund t’i vendosësh **pa prekur kodin**, te
