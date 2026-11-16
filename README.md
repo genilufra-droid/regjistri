@@ -11,15 +11,21 @@ Stafi  →  https://biobes.github.io/regjistri   (GitHub Pages — vetëm index.
                       └── Realtime: ndryshimi i njërit shfaqet te të gjithë
 ```
 
+> **Gjendja e bazës (16 nëntor 2026):** projekti `vikcvnioouxnchwrnahk` **u rikthye dhe
+> punon** — URL-ja dhe çelësi publik te `docs/index.html` janë të vlefshme, tabelat
+> (`products`, `suppliers`, `purchases` me `documentId`/`lineNo`, `meta`) përgjigjen.
+> Mungon vetëm bucket-i **`fatura`** (ruajtja e skedarëve) — hap `UDHEZUES-SUPABASE.md`
+> §“Projekti i vjetër u rikthye” dhe ekzekuto bllokun e Shtojcës A.
+>
 > **Shfaqet “Baza nuk u arrit”?** Hap
 > [panelin e Supabase](https://supabase.com/dashboard) dhe shiko nëse projekti
-> `regjistri-blerjeve` është në listë:
+> është në listë:
 > * me shenjën **Paused** → **Restore project**, prit 1 minutë, te faqja **Provo lidhjen**;
-> * **nuk është në listë** → projekti u fshi; krijo një të ri (10 minuta, hap pas hapi)
->   dhe vendos lidhjen — shih [`UDHEZUES-SUPABASE.md`](UDHEZUES-SUPABASE.md).
+> * **nuk është në listë** → krijo një të ri dhe vendos lidhjen —
+>   shih [`UDHEZUES-SUPABASE.md`](UDHEZUES-SUPABASE.md).
 >
-> Faqja tani e shpjegon vetë shkakun, ruan punën në pajisje derisa lidhja të
-> kthehet dhe e ndryshon lidhjen pa prekur kodin (*Të dhënat → Ndrysho lidhjen*).
+> Faqja e shpjegon vetë shkakun, ruan punën në pajisje derisa lidhja të kthehet dhe
+> e ndryshon lidhjen pa prekur kodin (*Të dhënat → Ndrysho lidhjen*).
 
 ---
 

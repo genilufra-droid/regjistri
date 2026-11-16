@@ -1,11 +1,38 @@
 # Udhëzues: baza e re në Supabase (10 minuta, hap pas hapi)
 
 Ky udhëzues e çon faqen nga “Baza nuk u arrit” te **Online · live**, me duart e tua.
-Projekti i vjetër (`vikcvnioouxnchwrnahk`) është fshirë, prandaj duhet **projekt i re**.
+
+> **Para se të krijosh projekt të re, lexo §“Projekti i vjetër u rikthye”.**
+> Më 16 nëntor 2026 projekti `vikcvnioouxnchwrnahk` **punon përsëri**, prandaj
+> shumicën e rasteve nuk duhet projekt i re — vetëm një bllok SQL për bucket-in
+> `fatura` dhe sinkronizimin live.
 
 > **Çfarë të mos ngjitësh askund:** çelësin `service_role` / `secret` dhe fjalëkalimin e
 > databazës. Faqja përdor vetëm çelësin **publik** (`sb_publishable_…` ose `anon` `eyJ…`),
 > i cili është i sigurt të qëndrojë në faqe.
+
+---
+
+## Projekti i vjetër u rikthye (kontroll 2-minutësh)
+
+Nëse URL-ja është `https://vikcvnioouxnchwrnahk.supabase.co`, provo këtë radhë — pa
+krijuar asgjë të re:
+
+| # | Prova | Si bëhet | Pritshmëria |
+|---|---|---|---|
+| 1 | URL-ja përgjigjet | hap `https://vikcvnioouxnchwrnahk.supabase.co/rest/v1/meta?select=id&apikey=ÇELËSI` | `[{"id":"app"}]` |
+| 2 | tabelat | `…/rest/v1/purchases?select=id&limit=1&apikey=ÇELËSI` | listë (edhe bosh) — **jo** `relation … does not exist` |
+| 3 | faqja | hap faqen → **Provo lidhjen** | **Online · live** |
+| 4 | skedari i faturës | Supabase → **Storage** | duhet të ekzistojë bucket-i **`fatura`** (publik) |
+
+Nëse pikat 1–3 kalojnë e pika 4 jo, ekzekuto **vetëm** bllokun “Bucket-i i faturave”
+dhe “Sinkronizimi live” te [Shtojca A](#shtojca-a--blloqe-sql-për-atë-që-mungon):
+20 sekonda në **SQL Editor → New query → Run**. Pa të, *Ruaj faturën* me skedar
+shfaq `bucket not found` dhe skedari nuk ruhet.
+
+> **Të dhënat:** më 16 nëntor 2026 baza kishte 1 blerje, 1 furnitor dhe 1 artikull
+> (rreshti i provës “Permistop / Fatos Sadiku”). Nëse ke kopje JSON të vjetër, ktheje me
+> **Të dhënat → Ngarko JSON**. Skedarët e faturave nuk janë brenda JSON-it.
 
 ---
 
