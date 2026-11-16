@@ -2046,7 +2046,13 @@ async function ocrReadServer(blob) {
   } catch (e) { throw new Error('Nuk u arrit shërbimi i leximit (internet?).'); }
   let body = '';
   try { body = await res.text(); } catch (e) {}
-  if (!res.ok) throw new Error(ocrServerError(res.status, body));
+  if (!res.ok) {
+    /* Nëse serveri dha një shpjegim të vetin (shqip), merre atë — më i dobishëm se kodi. */
+    let own = '';
+    try { const j = JSON.parse(body); own = String((j && (j.error || j.message)) || '').trim(); } catch (e) {}
+    if (own && own.length <= 160) throw new Error(own);
+    throw new Error(ocrServerError(res.status, body));
+  }
   let json = {};
   try { json = JSON.parse(body); } catch (e) { throw new Error('Përgjigje e palexueshme nga serveri.'); }
   const text = String((json && json.text) || '');

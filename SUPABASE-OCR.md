@@ -89,6 +89,9 @@ Duhet të shfaqet diçka si:
 - `gati: false` → mungon sekreti → hapi 2.
 - `UNAUTHORIZED_NO_AUTH_HEADER` → **Verify JWT** ende i ndezur → hapi 3b.
 - `Requested function was not found` → funksioni nuk u vendos / emri ndryshe → hapi 3.
+- `{"error":"Përdor POST."}` → **funksioni punon**, por është versioni i vjetër (pa vetëkontrollin
+  me GET). Nuk pengon skanimin; për të marrë edhe vetëkontrollin, ribëj deploy-in me kodin e ri:
+  Edge Functions → `ocr` → fshi përmbajtjen → ngjit `supabase/functions/ocr/index.ts` → **Deploy**.
 
 ### 4. Provoje funksionin (pa faqe)
 

@@ -314,6 +314,19 @@ const TESTS = `
     }
   });
 
+  await T('Gabimi i serverit shfaqet me tekstin e vet (shqip), jo vetëm kodin', async () => {
+    const realFetch = global.fetch;
+    global.fetch = async () => ({ ok: false, status: 500, async text() {
+      return JSON.stringify({ error: 'Mungon GEMINI_API_KEY (Supabase → Edge Functions → Secrets).' });
+    } });
+    let msg = '';
+    try {
+      window.OCR_SERVER = true;
+      await ocrReadServer(new Blob([new Uint8Array([1])], { type: 'image/jpeg' }));
+    } catch (e) { msg = e.message; } finally { global.fetch = realFetch; window.OCR_SERVER = false; }
+    A.ok(msg.indexOf('Mungon GEMINI_API_KEY') === 0, 'mesazhi: ' + msg);
+  });
+
   await T('Faturë e vërtetë fiskale: furnitori, numri, data, monedha', async () => {
     const p = parseInvoice(REAL, []);
     A.strictEqual(p.supplier, 'FURNITOR SHEMBULL', 'furnitori: ' + p.supplier);
