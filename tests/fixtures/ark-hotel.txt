@@ -1,0 +1,48 @@
+# Skanim (imazh) i faturës ARK HOTEL / BIOBES OCT — tekst i nxjerrë me OCR (sqi+eng).
+# Mbeturina reale: kodi QR i lexuar si tekst, '/' → '1', presje dhjetore të humbura.
+Data 31/10/2026 |
+Nr. Fiskalizim 29412026 |
+Nr. Fature 110514 |
+i Emri i Shitesit : ARK HOTEL
+i Adresa : Preze , Ahmetaq ’
+| Telefoni : 0689043200 TIRANE
+Numri i Identifikimit te Personit te Tatueshem : M14323201E ALB
+H
+I Kodi Fiskal : VAT
+! Emri i Bleresit : Biobes shpk Emri i Transportuesit:
+I Adresa : Sopez , Divjake Adresa:
+i Telefoni : NR
+ee © a . Targa e Mjetit:
+Numri i Identifikimit te Personit te Tatueshem : L4393044011 CL
+| | Kodi Fiskal : Ora e Furnizimit. 2:21:52 PM
+: NIPT: .
+EF
+Nr: KodiBc : Pershkrimi imaltit “Njesia : Sasia £ Cmim per : Vlefta pa | Vlefta e : Viefta me
+: : matje | njesi pa TVSH TVSH : TVSH | TVSH
+1:7051 “Dhome Hotel/Euro “DITE: t 75.47: 75.47 453. 80
+Gjithsej 1 Kursi:1 EUR =  S090Leke  TOTALI 1.00 EUR 75.47 4.53 80
+i NR pro NT RR Ht er
+br TOTALI Leke Ic i E
+E Pi
+x a
+E kë pËr
+tË B
+[x] br web
+Të gjitha informacionet e nevojshme për pagesën e kësaj fature
+mund të gjenden në këtë Kod QR
+BLERESI TRANSPORTUESI SHITESI
+(emer, mbiemer, firma) (emer, mbiemer, firma) (emer, mbiemer, firma) ’
+Gjanenuar nga ge oe. oes 4294738 SR RS. sii .
+Lloji i procesit të punës: P1 Faturimi i mallrave dhe sherbimeve te porositura ne a
+baze te kontrates i na EAE
+Kodi / Emrii llojit të faturës 388 / Faturë tatimore FE ma nË zt
+= ~ =r ee
+NIVF: ¢717dc2¢-5347-4df8-ad15-51704ec10733 x Foes TA
+NSLF: 71C28BE75123CCBEE8624813C2B5D8DIC , a et. Lis LL
+Kodi i vendit të ushtrimit të veprimtarisë së biznesit: ox654ag931, Durres, Nikel, Rinas Ark Hotel, Tirana I mF HR E
+Airport, prane bustit Nene Tereza be i ho
+ii it: = an kn
+Kodi i Operatorit: sa359nu297 [=] Te HE i
+Data dhe ora e lëshimit të faturës: 05.11.2026 14:21:51
+Mënyra e pagesës: Me banke Të gjitha informacionet në lidhje me këtë faturë mundi
+shihen në këtë Kod QR
