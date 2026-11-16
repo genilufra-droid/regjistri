@@ -504,6 +504,7 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
         <input class="field" id="scanKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…">
         <div class="actions" style="justify-content:flex-start;gap:8px">
           <button type="button" class="btn sm" data-act="scan-key-save">Ruaj çelësin</button>
+          <button type="button" class="btn ghost sm" data-act="scan-key-test">Provo çelësin</button>
           <button type="button" class="btn ghost sm" data-act="scan-key-del">Fshi çelësin</button>
         </div>
         <label><input type="checkbox" id="scanStrongOn"> Përdor leximin e fortë kur ka çelës e internet</label>
@@ -1992,6 +1993,37 @@ function scanDelKey() {
   toast('Çelësi u fshi nga kjo pajisje');
 }
 
+/* ---- prova e çelësit: një imazh i vogël me tekst kalon nëpër Google Vision ----
+   Imazhi “REGJISTRI 12345” është i ruajtur këtu (420×110 PNG, ~6 KB): s'varet
+   nga canvas-i apo nga fontet e pajisjes, prandaj prova del njësoj kudo.
+   Kosto: 1 njësi nga kuota falas. */
+const VISION_TEST_PNG = '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';
+function visionTestBlob() {
+  const bin = atob(VISION_TEST_PNG);
+  const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  return new Blob([u8], { type: 'image/png' });
+}
+async function scanTestKey() {
+  if (!visionKey()) { scanKeyMsg('Shkruaj çelësin dhe shtyp “Ruaj çelësin” para provës.', true); return; }
+  scanKeyMsg('Po provohet çelësi me Google Vision…', false);
+  scanProg('Po provohet çelësi…', 0.4);
+  try {
+    const txt = await visionRead(visionTestBlob());
+    scanProg(null, null);
+    const flat = String(txt).replace(/\s/g, '');
+    scanKeyMsg(/12345/.test(flat)
+      ? '✓ Çelësi punon: Google Vision lexoi testin (“REGJISTRI 12345”).'
+      : '✓ Çelësi punon, por testi u lexua si: ' + String(txt).slice(0, 40), false);
+    setVisionOn(true);
+    const chk = $('#scanStrongOn'); if (chk) chk.checked = true;
+    scanStrongUI();
+  } catch (e) {
+    scanProg(null, null);
+    scanKeyMsg('✗ ' + ((e && e.message) || 'Prova dështoi.'), true);
+  }
+}
+
 function loadScriptOnce(src) {
   return new Promise((res, rej) => {
     let done = false;
@@ -2665,6 +2697,7 @@ document.addEventListener('click', e => {
     case 'scan-text': scanAnalyze($('#scanText').value); return;
     case 'scan-key-save': scanSaveKey(); return;
     case 'scan-key-del': scanDelKey(); return;
+    case 'scan-key-test': scanTestKey(); return;
     case 'scan-apply': scanApply(); return;
     case 'scan-rm': { const row = t.closest && t.closest('.rg-row'); if (row && row.remove) row.remove(); return; }
     case 'scan-dd': {
