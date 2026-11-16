@@ -1997,33 +1997,22 @@ function scanOpen() {
    i cili e mban çelësin e leximit si *secret* në server. Kështu asnjë pajisje nuk
    pyetet për çelës dhe çelësi nuk shihet në faqe. */
 const OCR_FN = 'ocr';
-const OCR_FN_CANDIDATES = ['ocr', 'scan-ocr', 'ocr-invoice', 'invoice-ocr', 'skaner', 'scan'];
+/* Emri i funksionit në Supabase nuk dihet me siguri (mund të jetë `ocr`, `ocr-invoice`,
+   `scan-invoice`…). Faqja provon me radhë emrat më të mundshëm me një POST të vetëm
+   secilin; kur njëri përgjigjet, ai emër mbahet mend në këtë pajisje. */
+const OCR_FN_CANDIDATES = ['ocr', 'ocr-invoice', 'invoice-ocr', 'scan-ocr', 'scan-invoice',
+  'skaner', 'fatura-ocr', 'ocr-fatura', 'analizo', 'invoice'];
 const OCR_SLUG_LS = 'regjistri.ocr.slug';
-/* Emri i funksionit në Supabase mund të jetë i ndryshëm nga `ocr`. Provohen disa
-   emra një herë (GET i lirë: 404 = s'ekziston, 401/405 = ekziston) dhe emri që
-   përgjigjet mbahet mend në këtë pajisje. */
-function ocrSlug() {
+function ocrSlugOrder() {
   const fixed = String((window && window.OCR_SLUG) || '').trim();
-  if (fixed) return fixed;
-  try { const saved = (LS && LS.getItem(OCR_SLUG_LS)) || ''; if (saved) return saved; } catch (e) {}
-  return OCR_FN;
+  if (fixed) return [fixed];
+  let saved = '';
+  try { saved = String((LS && LS.getItem(OCR_SLUG_LS)) || '').trim(); } catch (e) {}
+  if (saved) return [saved].concat(OCR_FN_CANDIDATES.filter(x => x !== saved));
+  return OCR_FN_CANDIDATES.slice();
 }
-async function ocrResolveSlug() {
-  const fixed = String((window && window.OCR_SLUG) || '').trim();
-  if (fixed) return fixed;
-  try { const saved = (LS && LS.getItem(OCR_SLUG_LS)) || ''; if (saved) return saved; } catch (e) {}
-  const base = String(CFG.url || '').replace(/\/+$/, '');
-  if (!base) return OCR_FN;
-  for (const slug of OCR_FN_CANDIDATES) {
-    try {
-      const r = await fetch(base + '/functions/v1/' + slug, { method: 'GET' });
-      if (r.status !== 404) {
-        try { LS && LS.setItem(OCR_SLUG_LS, slug); } catch (e) {}
-        return slug;
-      }
-    } catch (e) { return OCR_FN; }              // pa internet: provo direkt
-  }
-  return OCR_FN;
+function ocrRememberSlug(slug) {
+  try { LS && LS.setItem(OCR_SLUG_LS, slug); } catch (e) {}
 }
 function ocrServerError(status, body) {
   const b = String(body || '');
@@ -2036,28 +2025,42 @@ function ocrServerError(status, body) {
 async function ocrReadServer(blob) {
   if (!CFG.url) throw new Error('S’ka lidhje me bazën për shërbimin e leximit.');
   const b64 = await visionImage(blob);                  // zvogëlim + base64
-  const url = String(CFG.url).replace(/\/+$/, '') + '/functions/v1/' + await ocrResolveSlug();
+  const base = String(CFG.url).replace(/\/+$/, '');
   const headers = { 'Content-Type': 'application/json' };
   if (CFG.key) { headers.apikey = CFG.key; headers.Authorization = 'Bearer ' + CFG.key; }
   scanProg('Po lexohet në server…', 0.5);
-  let res;
-  try {
-    res = await fetch(url, { method: 'POST', headers, body: JSON.stringify({ image: b64, mime: 'image/jpeg' }) });
-  } catch (e) { throw new Error('Nuk u arrit shërbimi i leximit (internet?).'); }
-  let body = '';
-  try { body = await res.text(); } catch (e) {}
-  if (!res.ok) {
-    /* Nëse serveri dha një shpjegim të vetin (shqip), merre atë — më i dobishëm se kodi. */
-    let own = '';
-    try { const j = JSON.parse(body); own = String((j && (j.error || j.message)) || '').trim(); } catch (e) {}
-    if (own && own.length <= 160) throw new Error(own);
-    throw new Error(ocrServerError(res.status, body));
+
+  const tried = [];
+  const notFound = [];
+  for (const slug of ocrSlugOrder()) {
+    tried.push(slug);
+    let res;
+    try {
+      res = await fetch(base + '/functions/v1/' + slug, {
+        method: 'POST', headers, body: JSON.stringify({ image: b64, mime: 'image/jpeg' })
+      });
+    } catch (e) { throw new Error('Nuk u arrit shërbimi i leximit (internet?).'); }
+    let body = '';
+    try { body = await res.text(); } catch (e) {}
+    if (res.status === 404) { notFound.push(slug); continue; }      // provo emrin tjetër
+
+    if (!res.ok) {
+      /* Nëse serveri dha shpjegim të vetin (shqip), merre atë — më i dobishëm se kodi. */
+      let own = '';
+      try { const j = JSON.parse(body); own = String((j && (j.error || j.message)) || '').trim(); } catch (e) {}
+      if (own && own.length <= 160) throw new Error(own);
+      throw new Error(ocrServerError(res.status, body));
+    }
+    let json = {};
+    try { json = JSON.parse(body); } catch (e) { throw new Error('Përgjigje e palexueshme nga serveri.'); }
+    const text = String((json && json.text) || '');
+    if (!text.trim()) throw new Error((json && json.error) || 'Shërbimi i leximit ktheu tekst bosh.');
+    ocrRememberSlug(slug);
+    return text;
   }
-  let json = {};
-  try { json = JSON.parse(body); } catch (e) { throw new Error('Përgjigje e palexueshme nga serveri.'); }
-  const text = String((json && json.text) || '');
-  if (!text.trim()) throw new Error((json && json.error) || 'Shërbimi i leximit ktheu tekst bosh.');
-  return text;
+  throw new Error('Shërbimi i leximit nuk u gjet në server. U provuan: ' +
+    (notFound.length ? notFound.join(', ') : tried.join(', ')) +
+    '. Kontrollo emrin te Supabase → Edge Functions (ose vendos window.OCR_SLUG).');
 }
 
 /* ---- leximi i skedarit ---- */

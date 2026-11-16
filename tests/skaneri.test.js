@@ -266,19 +266,19 @@ const TESTS = `
     } finally { global.fetch = realFetch; window.OCR_SERVER = false; }
   });
 
-  await T('Rënia në radhë: server → Vision → pajisja', async () => {
+  await T('Rënia në radhë: server -> Vision -> pajisja', async () => {
     const realFetch = global.fetch, realT = global.window.Tesseract;
-    let step = 'none';
+    let used = [];
     global.fetch = async (url) => {
-      if (url.indexOf('/functions/v1/ocr') > 0) { step = 'server'; return { ok: false, status: 404, async text() { return 'x'; } }; }
-      step = 'vision';
+      if (url.indexOf('/functions/v1/') > -1) { used.push('server'); return { ok: false, status: 404, async text() { return '{}'; } }; }
+      used.push('vision');
       return { ok: true, status: 200, async text() { return JSON.stringify({ responses: [{ fullTextAnnotation: { text: 'VISION TEKST 12345' } }] }); } };
     };
     try {
       window.OCR_SERVER = true;
       setVisionKey('AIzaSySERVER1234567890abcdefghijklmnopqr'); setVisionOn(true);
       const txt = await scanReadImage(new Blob([new Uint8Array([7])], { type: 'image/jpeg' }));
-      A.strictEqual(step, 'vision', 'nuk kalohet te Vision pas serverit: ' + step);
+      A.ok(used.indexOf('vision') > -1, 'nuk kalohet te Vision pas serverit: ' + used.join(','));
       A.strictEqual(SCAN.reader, 'vision');
       A.ok(/nuk u gjet në server/.test(SCAN.serverErr || ''), 'gabimi i serverit: ' + SCAN.serverErr);
       A.ok(/VISION TEKST/.test(txt), txt);
@@ -289,24 +289,30 @@ const TESTS = `
     }
   });
 
-  await T('Emri i funksionit zbulohet vetë (ocr -> invoice-ocr) dhe mbahet mend', async () => {
+  await T('Emri i funksionit zbulohet vetë: ocr -> ocr-invoice, dhe mbahet mend', async () => {
     const realFetch = global.fetch;
-    const tried = [];
+    const posts = [];
     global.fetch = async (url, opt) => {
-      tried.push(url);
-      if (opt && opt.method === 'POST') {
+      if (!opt || opt.method !== 'POST') return { ok: false, status: 404, async text() { return 'x'; } };
+      posts.push(url);
+      if (url.indexOf('ocr-invoice') > -1) {
         return { ok: true, status: 200, async text() { return JSON.stringify({ text: 'FURNITOR QR 9 12345' }); } };
       }
-      if (url.indexOf('invoice-ocr') > -1) return { ok: true, status: 401, async text() { return '{}'; } };
-      return { ok: false, status: 404, async text() { return 'Function not found'; } };
+      return { ok: false, status: 404, async text() { return '{"message":"Requested function was not found"}'; } };
     };
     try {
       __mem.removeItem('regjistri.ocr.slug');
       window.OCR_SERVER = true;
       const txt = await ocrReadServer(new Blob([new Uint8Array([1])], { type: 'image/jpeg' }));
       A.ok(txt.indexOf('FURNITOR QR') === 0, 'teksti: ' + txt);
-      A.ok(tried.some(u => u.indexOf('invoice-ocr') > -1), 'nuk u provua emri alternativ');
-      A.strictEqual(__mem.getItem('regjistri.ocr.slug'), 'invoice-ocr', 'emri nuk u mbajt mend');
+      A.strictEqual(posts.length, 2, 'u provuan ' + posts.length + ' emra');
+      A.ok(posts[0].indexOf('/ocr') > -1, 'i pari duhet ocr: ' + posts[0]);
+      A.strictEqual(__mem.getItem('regjistri.ocr.slug'), 'ocr-invoice', 'emri nuk u mbajt mend');
+
+      /* Herën tjetër shkon drejt te emri i mbajtur mend. */
+      posts.length = 0;
+      await ocrReadServer(new Blob([new Uint8Array([1])], { type: 'image/jpeg' }));
+      A.strictEqual(posts.length, 1, 'nuk u përdor emri i mbajtur mend');
     } finally {
       global.fetch = realFetch;
       window.OCR_SERVER = false;
