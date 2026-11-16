@@ -109,6 +109,32 @@ Nëse më vonë do diçka më të mbyllur, pa e komplikuar:
 2. **Hyrje me email** (Supabase Auth) dhe lejet lidhen me `authenticated` në vend të `anon` — ndryshim prej 4 rreshtash te `schema.sql`.
 3. **Vetëm leximi publik**, shkrimi me fjalëkalim.
 
+## Skanimi i faturës (foto ose PDF → faturë e plotësuar)
+
+Te skeda **Blerjet** (butoni **📷 Skano faturën**) ose brenda formularit të faturës:
+
+1. **Zgjidh foto ose PDF** — në telefon hapet direkt kamera; mund edhe ta tërheqësh skedarin.
+2. Faqja e lexon tekstin **brenda pajisjes** dhe të nxjerr: **furnitorin, numrin e faturës,
+   datën, monedhën** dhe **rreshtat** (artikull · sasi · njësi · çmim).
+3. Kontrollon te kutia e skanerit (mund t’i ndryshosh të gjitha), shtyp **Plotëso faturën**
+   dhe pastaj **Ruaj faturën**. Skedari i faturës lidhet me dokumentin, një herë.
+
+| Rruga | Kur | Saktësia |
+|---|---|---|
+| **PDF me tekst** (fatura nga sistemi i furnitorit) | gjithmonë e para | shumë e lartë — lexohet teksti origjinal, pa OCR |
+| **Foto / PDF i skanuar** | kur s’ka tekst | OCR me Tesseract.js (shqip + anglisht), i mirë për kokën e faturës, i ndryshëm për tabela |
+| **Ngjit tekstin** | kur CDN-ja nuk hapet ose OCR-i ngatërron | e njëjta logjikë, tekst i sigurt |
+
+- **Pa server, pa çelës API, pa kosto:** OCR-i dhe lexuesi i PDF-së shkarkohen vetëm herën e
+  parë (~5–8 MB) nga CDN-ja dhe punojnë në pajisje. Nëse interneti nuk i hap, skaneri të thotë
+  ta provosh “Ngjit tekstin e faturës”.
+- **Gjithmonë konfirmon njeriu** — asnjë faturë nuk ruhet vetë.
+- **Mosbesim ndaj tabelave:** numri, data e furnitori dalin pothuajse gjithmonë; rreshtat
+  kontrolloji (sidomos zbritjet e TVSH-në). Totali i lexuar shfaqet pranë totalit të rreshtave
+  që të krahasohen.
+- **Ndryshim fature ekzistuese:** nëse fatura ka rreshta, faqja kërkon konfirmim para se t’i
+  zëvendësojë.
+
 ## Kur baza nuk përgjigjet (e re)
 
 Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
@@ -143,5 +169,6 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
 | `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
 | `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
 | `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |
+| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur (7 prova) |
 | `tests/live.test.js` | provë e vërtetë kundër projektit (7 prova) — `SUPABASE_URL=… SUPABASE_KEY=… node tests/live.test.js` |
 | `tests/staf.test.js` | provë me dy “pajisje” kundër bazës reale (17 prova) |

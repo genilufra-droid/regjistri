@@ -226,6 +226,36 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
 .diag.warn{border-left-color:var(--signal);background:#FBF4DE}
 .diag.warn h4{color:#7A5B00}
 
+/* skanuesi i faturës */
+.scanbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;background:var(--bg);border-radius:var(--radius);padding:10px 12px;margin:0 0 16px}
+.scanbar .btn{padding:8px 14px;font-size:15px}
+.scanbar small{color:var(--muted);font-size:13px;line-height:1.35;flex:1;min-width:180px}
+.scanwrap{padding:20px 22px}
+.scanwrap h2{margin:0 0 6px;font-size:22px;letter-spacing:-.01em}
+.scanintro{margin:0 0 16px;color:var(--muted);font-size:14px}
+.drop{border:2px dashed var(--line);border-radius:var(--radius);padding:18px;text-align:center;background:var(--bg)}
+.drop.hot{border-color:var(--accent);background:#EAF3E7}
+.drop small{display:block;color:var(--muted);font-size:13px;margin-top:8px}
+.scanprogress{margin:14px 0;font-size:14px;color:var(--muted)}
+.scanprogress .bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-bottom:6px}
+.scanprogress .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.scanpaste{margin:14px 0;font-size:14px}
+.scanpaste summary{cursor:pointer;color:var(--accent);font-weight:600}
+.scanpaste textarea{margin:8px 0;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.scanres{margin:16px 0;border-top:1px solid var(--line);padding-top:14px}
+.scanres h3{margin:0 0 10px;font-size:16px}
+.scanres .grid2{gap:10px}
+.scanres .rowgrid{overflow-x:auto;margin:10px 0}
+.scanres .rg-head,.scanres .rg-row{display:grid;grid-template-columns:22px minmax(120px,1fr) 66px 74px 90px 28px;gap:6px;align-items:center;padding:4px 0}
+.scanres .rg-head{font-size:12px;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:6px}
+.scanres .rg-row .field{padding:7px 8px;font-size:14px}
+.scanres .rg-row .lx{justify-self:center}
+.scanwarn{background:#FBF4DE;border-left:4px solid var(--signal);border-radius:4px;padding:9px 12px;font-size:13.5px;color:#7A5B00;margin:10px 0}
+.scanwarn ul{margin:4px 0 0;padding-left:18px}
+.scantext{font-size:12.5px;color:var(--muted);max-height:140px;overflow:auto;background:var(--bg);border-radius:4px;padding:8px 10px;white-space:pre-wrap;margin-top:10px}
+.scanimg{max-width:100%;max-height:180px;border-radius:4px;border:1px solid var(--line);margin-top:10px}
+
+
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--radius);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:15px}
 .toast[hidden]{display:none}
 .card{background:var(--paper);box-shadow:0 0 0 1px var(--line);border-radius:var(--radius);padding:18px 20px;margin-bottom:16px}
@@ -292,6 +322,7 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
     <div class="bar">
       <h1>Të gjitha blerjet</h1>
       <input id="pFilter" class="field" type="search" placeholder="Filtro blerjet…" aria-label="Filtro blerjet">
+      <button class="btn ghost" data-act="scan-open" title="Foto ose PDF e faturës → plotësohet vetë">📷 Skano faturën</button>
       <button class="btn" data-act="new-purchase">Regjistro blerje</button>
     </div>
     <div id="purchaseTable"></div>
@@ -375,6 +406,10 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
 <dialog id="dPurchase">
   <form id="fPurchase" novalidate>
     <h2 id="dpTitle">Regjistro faturë</h2>
+    <div class="scanbar">
+      <button type="button" class="btn" data-act="scan-open">📷 Skano faturën</button>
+      <small>Bëj foto ose zgjidh PDF-në — furnitori, numri, data dhe artikujt plotësohen vetë. Ti kontrollon dhe ruan.</small>
+    </div>
     <div class="auto" id="fpAuto" hidden></div>
 
     <div class="grid2">
@@ -436,6 +471,33 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
       <button type="submit" class="btn">Ruaj faturën</button>
     </div>
   </form>
+</dialog>
+<!-- skanuesi i faturës -->
+<dialog id="dScan">
+  <div class="scanwrap">
+    <h2>Skano faturën</h2>
+    <p class="scanintro">Leximi bëhet brenda pajisjes, pa server tjetër. Skedari i faturës ruhet te faturat; tekstet që lexohen plotësojnë formularin — ti kontrollon dhe shtyp <b>Ruaj faturën</b>.</p>
+    <div class="drop" id="scanDrop">
+      <button type="button" class="btn" data-act="scan-pick">📷 Zgjidh foto ose PDF</button>
+      <small>ose tërhiq skedarin këtu · JPG, PNG, WEBP, PDF · deri në 15 MB</small>
+      <input type="file" id="scanFile" accept="image/*,application/pdf,.pdf" hidden>
+    </div>
+    <div class="scanprogress" id="scanProg" hidden>
+      <div class="bar"><i id="scanBar"></i></div>
+      <span id="scanProgText">Po përgatitet…</span>
+    </div>
+    <details class="scanpaste">
+      <summary>Ose ngjit tekstin e faturës</summary>
+      <textarea id="scanText" class="field" rows="6" spellcheck="false" placeholder="Ngjit këtu tekstin e faturës (Ctrl+V)…"></textarea>
+      <button type="button" class="btn ghost sm" data-act="scan-text">Analizo tekstin</button>
+    </details>
+    <div class="scanres" id="scanRes" hidden></div>
+    <div class="err" id="scanErr" role="alert"></div>
+    <div class="actions">
+      <button type="button" class="btn ghost" data-close="dScan">Anulo</button>
+      <button type="button" class="btn" id="scanApply" data-act="scan-apply" disabled>Plotëso faturën</button>
+    </div>
+  </div>
 </dialog>
 <datalist id="unitList"><option value="copë"></option><option value="set"></option><option value="kg"></option><option value="m"></option><option value="m²"></option><option value="litër"></option><option value="kuti"></option><option value="thes"></option><option value="kovë"></option></datalist>
 
@@ -1661,6 +1723,390 @@ function renderAll() {
 }
 function goSearch(q) { closeSupplier(); state.q = q; $('#q').value = q; setTab('search'); window.scrollTo({ top: 0 }); }
 
+/* =====================================================================
+   SKANUESI I FATURËS — foto/PDF → tekst → faturë e plotësuar
+   · PDF me tekst lexohet drejt (shtresa e tekstit) — pa OCR, i saktë.
+   · Foto ose PDF i skanuar: OCR me Tesseract.js (shqip + anglisht), i cili
+     shkarkohet vetëm kur hapet skanuesi dhe punon brenda pajisjes.
+   · Nëse lexuesi nuk hapet (internet i dobët / bllokues), ngjitja e tekstit
+     bën të njëjtën punë.
+   Gjithmonë konfirmon njeriu: skaneri plotëson formularin, ti ruan.
+   ===================================================================== */
+const SCAN_LIBS = {
+  pdfjs: {
+    global: 'pdfjsLib',
+    urls: ['https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
+           'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js'],
+    worker: 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js'
+  },
+  ocr: {
+    global: 'Tesseract',
+    urls: ['https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js',
+           'https://unpkg.com/tesseract.js@5/dist/tesseract.min.js']
+  }
+};
+let SCAN = null;                 // { file, text, parsed }
+
+function loadScriptOnce(src) {
+  return new Promise((res, rej) => {
+    let done = false;
+    const fin = (e) => { if (done) return; done = true; e ? rej(e) : res(true); };
+    try {
+      const s = document.createElement('script');
+      s.src = src; s.async = true;
+      s.onload = () => fin(null);
+      s.onerror = () => fin(new Error('CDN nuk u hap'));
+      (document.head || document.body).appendChild(s);
+      setTimeout(() => fin(new Error('Koha mbaroi')), 20000);
+    } catch (e) { fin(e); }
+  });
+}
+async function ensureScanLib(kind, onProgress) {
+  const L = SCAN_LIBS[kind];
+  const ready = () => {
+    const g = window[L.global];
+    if (kind === 'pdfjs' && g && g.GlobalWorkerOptions) g.GlobalWorkerOptions.workerSrc = L.worker;
+    return g || null;
+  };
+  if (ready()) return ready();
+  if (onProgress) onProgress('Po shkarkohet lexuesi i skedarit…');
+  let last = null;
+  for (const url of L.urls) {
+    try { await loadScriptOnce(url); const g = ready(); if (g) return g; }
+    catch (e) { last = e; }
+  }
+  throw new Error('Lexuesi nuk u ngarkua (' + (last && last.message ? last.message : 'pa internet') +
+    '). Provo sërish, ose përdor “Ngjit tekstin e faturës”.');
+}
+
+function scanProg(text, pct) {
+  const box = $('#scanProg'), bar = $('#scanBar'), lab = $('#scanProgText');
+  if (!box) return;
+  if (text === null && pct === null) { box.hidden = true; return; }
+  box.hidden = false;
+  if (text) lab.textContent = text;
+  if (pct != null) bar.style.width = Math.round(Math.max(0, Math.min(1, pct)) * 100) + '%';
+}
+function scanErr(msg) { const e = $('#scanErr'); if (e) e.textContent = msg || ''; }
+
+function scanOpen() {
+  scanErr(''); scanProg(null, null);
+  const res = $('#scanRes'); if (res) { res.hidden = true; res.innerHTML = ''; }
+  const ap = $('#scanApply'); if (ap) ap.disabled = true;
+  const t = $('#scanText'); if (t) t.value = '';
+  const d = $('#dScan'); if (d && d.showModal) d.showModal();
+}
+
+/* ---- leximi i skedarit ---- */
+async function scanPdfPagesText(jsPdf, file) {
+  const buf = await file.arrayBuffer();
+  const doc = await jsPdf.getDocument({ data: new Uint8Array(buf) }).promise;
+  let text = '';
+  for (let i = 1; i <= Math.min(doc.numPages || 1, 5); i++) {
+    const page = await doc.getPage(i);
+    const tc = await page.getTextContent();
+    text += (tc.items || []).map(it => it.str).join(' ') + '\n';
+  }
+  return { doc, text };
+}
+async function scanPdfPageImage(jsPdf, doc) {
+  const page = await doc.getPage(1);
+  const vp = page.getViewport({ scale: 2 });
+  const cv = document.createElement('canvas');
+  cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+  await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
+  return await new Promise(r => cv.toBlob(b => r(b), 'image/jpeg', 0.92));
+}
+async function scanReadFile(file) {
+  const isPdf = /pdf$/i.test(file.type || '') || /\.pdf$/i.test(file.name || '');
+  if (isPdf) {
+    scanProg('Po lexohet PDF-ja…', 0.15);
+    const jsPdf = await ensureScanLib('pdfjs');
+    const { doc, text } = await scanPdfPagesText(jsPdf, file);
+    const clean = String(text || '').replace(/\s+/g, '');
+    if (clean.length >= 40) {                          // PDF me tekst: pa OCR
+      scanProg('Teksti u lexua nga PDF-ja', 1);
+      return text;
+    }
+    scanProg('PDF i skanuar — po lexohet si foto…', 0.3);
+    const img = await scanPdfPageImage(jsPdf, doc);
+    if (!img) throw new Error('PDF-ja s’u kthye në foto — provo me një foto të faturës.');
+    return await scanReadImage(img);
+  }
+  return await scanReadImage(file);
+}
+async function scanReadImage(blob) {
+  scanProg('Po përgatitet leximi i fotos…', 0.1);
+  const T = await ensureScanLib('ocr');
+  const out = await T.recognize(blob, 'sqi+eng', {
+    logger: m => {
+      if (!m) return;
+      if (m.status) {
+        const label = /recognizing/i.test(m.status) ? 'Po lexohet teksti…'
+          : /loading|initializ/i.test(m.status) ? 'Po përgatitet leximi (vetëm herën e parë)…'
+          : 'Po përgatitet…';
+        scanProg(label, m.progress != null ? 0.15 + m.progress * 0.8 : null);
+      }
+    }
+  });
+  scanProg('Teksti u lexua', 1);
+  return (out && out.data && out.data.text) || '';
+}
+async function handleScanFile(file) {
+  scanErr('');
+  if (!file) return;
+  if (file.size > MAX_FILE) { scanErr('Skedari është mbi 15 MB — bëj një foto më të vogël.'); return; }
+  const okType = /^image\//i.test(file.type || '') || /pdf$/i.test(file.type || '') || /\.(pdf|jpe?g|png|webp|heic)$/i.test(file.name || '');
+  if (!okType) { scanErr('Pranohen foto (JPG/PNG/WEBP) ose PDF.'); return; }
+  SCAN = { file, text: '', parsed: null };
+  const res = $('#scanRes'); if (res) res.hidden = true;
+  try {
+    const text = await scanReadFile(file);
+    if (String(text || '').replace(/\s+/g, '').length < 12) {
+      scanProg(null, null);
+      scanErr('Nuk u lexua tekst. Provo një foto më të ndriçuar e më të drejtë, ose ngjit tekstin e faturës.');
+      return;
+    }
+    scanProg(null, null);
+    scanAnalyze(text);
+  } catch (e) {
+    scanProg(null, null);
+    scanErr((e && e.message) || 'Leximi dështoi. Provo sërish ose ngjit tekstin.');
+  }
+}
+
+/* ---- teksti → fusha ---- */
+function parseInvoice(raw, knownSuppliers) {
+  const text = String(raw || '').replace(/\r/g, '').replace(/\u00a0/g, ' ');
+  const lines = text.split('\n').map(l => l.replace(/[ \t]+/g, ' ').trim()).filter(Boolean);
+  const joined = lines.join('\n');
+  const decComma = /,\d{1,2}(?!\d)/.test(joined);      // 1.234,56 → presje dhjetore
+
+  const num = (v) => {
+    if (v == null) return null;
+    let t = String(v).replace(/[^\d.,-]/g, '');
+    if (!t || !/\d/.test(t)) return null;
+    const neg = t.startsWith('-'); t = t.replace(/-/g, '');
+    const lc = t.lastIndexOf(','), ld = t.lastIndexOf('.');
+    if (lc > -1 && ld > -1) t = lc > ld ? t.replace(/\./g, '').replace(',', '.') : t.replace(/,/g, '');
+    else if (lc > -1) {
+      const dec = t.length - lc - 1;
+      t = (dec === 3 && t.length > 4) ? t.replace(/,/g, '') : t.replace(',', '.');
+    } else if (ld > -1) {
+      const parts = t.split('.');
+      if (parts.length > 2) t = t.replace(/\./g, '');
+      else if (parts[1] && parts[1].length === 3 && t.length > 4 && !decComma) t = t.replace('.', '');
+    }
+    const n = parseFloat(t);
+    return isFinite(n) ? (neg ? -n : n) : null;
+  };
+
+  /* data: ISO ose 27.10.2026 / 27/10/2026 */
+  let date = null;
+  const tight = joined.replace(/(\d)\s+(?=\d)/g, '$1').replace(/\s*([.\/-])\s*/g, '$1');
+  const iso = joined.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/) || tight.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/);
+  const dmy = joined.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/) || tight.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/);
+  if (iso) date = iso[1] + '-' + String(+iso[2]).padStart(2, '0') + '-' + String(+iso[3]).padStart(2, '0');
+  else if (dmy) {
+    let y = dmy[3].length === 2 ? '20' + dmy[3] : dmy[3];
+    let a = +dmy[1], b = +dmy[2];
+    if (b > 12 && a <= 12) { const t = a; a = b; b = t; }   // amerikanisht 10/27/2026
+    if (a >= 1 && a <= 31 && b >= 1 && b <= 12) date = y + '-' + String(b).padStart(2, '0') + '-' + String(a).padStart(2, '0');
+  }
+
+  /* numri i faturës */
+  let invoice = null;
+  const invRe = /(?:fatur[aë]|invoice|nr[.\s]*fature|fatura\s*nr\.?)[^\n\d]{0,24}?([A-Z]{0,4}[-/ ]?\d[\dA-Za-z\-\/]{1,18})/i;
+  const mi = joined.match(invRe);
+  if (mi) invoice = mi[1].replace(/\s+/g, '').trim();
+  if (!invoice) {                                     // “Nr. 12345” / “F-2026-0412” në krye
+    const m2 = joined.match(/\b([A-Z]{1,3}-\d{1,4}(?:[-/]\d{1,6})?)\b/);
+    if (m2) invoice = m2[1];
+  }
+
+  /* monedha */
+  let currency = null;
+  if (/€|\beur\b|euro/i.test(joined)) currency = 'EUR';
+  else if (/lek[ëe]?|\ball\b|\bl\.?\b/i.test(joined)) currency = 'ALL';
+
+  /* furnitori: i njohur > etiketë > rreshti i parë i arsyeshëm */
+  const known = (knownSuppliers || Store.data.suppliers.map(s => s.name)).filter(Boolean);
+  let supplier = null;
+  for (const k of known) { if (k && norm(joined).includes(norm(k))) { supplier = k; break; } }
+  if (!supplier) {
+    const ms = joined.match(/(?:furnitor[^\n:]{0,14}|shit[eë]s[^\n:]{0,10}|shoq[eë]ri[^\n:]{0,10}|company|seller)\s*[:\-]\s*([^\n]{3,60})/i);
+    if (ms) supplier = ms[1];
+    else {
+      supplier = lines.find(l => /[A-Za-zËëÇçÀ-ÿ]{3}/.test(l) &&
+        !/fatur|invoice|dat[ëe]|date|nr\.|total|tvsh|vat|tel|email|@|www\./i.test(l)) || '';
+    }
+    supplier = String(supplier).replace(/[|;].*$/, '').replace(/\s{2,}/g, ' ').trim().slice(0, 60);
+  }
+
+  /* rreshtat: emër + numra në fund (sasi · çmim [· total]) */
+  const unitRx = /(?:^|\s)(cop[eë]|set|kg|kile|m²|m2|m|lit[eë]r|ml|gr|g|kuti|thes|kov[eë]|pak|palet|or[eë])\b\.?/i;
+  const numRx = /^-?\d{1,3}(?:[ .]\d{3})*(?:[.,]\d{1,3})?$|^-?\d+(?:[.,]\d{1,3})?$/;
+  const skipRx = /total|n[eë]ntotal|subtotal|tvsh|\bvat\b|zbritje|discount|transport|firm[ëe]|firma|pages|paguaj|iban|tel|email|@|www\.|klient|customer|adres/i;
+  const rows = [];
+  lines.forEach((line, idx) => {
+    if (skipRx.test(line)) return;
+    const toks = line.split(' ').filter(Boolean);
+    if (toks.length < 2) return;
+    const tail = []; let i = toks.length - 1;
+    while (i >= 0 && tail.length < 4) {
+      const t = toks[i];
+      if (numRx.test(t)) { tail.unshift(t); i--; }
+      else if (/^(?:€|eur|all|lek[ëe]?|l|x|×|cop[ëe]|set|kg|kile|gr|g|ml|lit[eë]r|m²|m2|m|kuti|thes|kov[ëe]|pak)$/i.test(t)) { i--; }
+      else break;
+    }
+    if (tail.length < 2) return;
+    let name = toks.slice(0, i + 1).join(' ').replace(/^\d{1,3}[.)]?\s+/, '').replace(/[|;]+/g, ' ').trim();
+    if (name.length < 2 || !/[A-Za-zËëÇçÀ-ÿ]{2}/.test(name)) return;
+
+    let qty = null, price = null;
+    const a = num(tail[0]), b = num(tail[1]), c = tail.length >= 3 ? num(tail[2]) : null;
+    if (a != null && b != null && c != null && tail.length >= 3) {
+      const dQty = Math.abs(c - a * b), dPrice = Math.abs(c - b * a);   // a×b = total ?
+      if (dQty <= dPrice) { qty = a; price = b; }
+      else { qty = b; price = c; }                    // emër çmim total
+    } else if (a != null && b != null) {
+      qty = a > 0 ? a : null; price = b;              // sasi + çmim
+    } else return;
+    if (qty == null || qty <= 0 || price == null) return;
+
+    const um = line.match(unitRx);
+    const unit = um ? um[1].toLowerCase().replace('cope', 'copë').replace('litr', 'litër').replace('kile', 'kg') : 'copë';
+    rows.push({ product: name.slice(0, 80), qty: String(qty), unit, price: String(price) });
+  });
+
+  const totalLine = (() => {
+    const m = joined.match(/(?:total|gjithsej|për\s*pages[ëe]?)[^\n\d]{0,16}([\d.,\s]{2,16})/i);
+    return m ? num(m[1]) : null;
+  })();
+
+  return { supplier: supplier || '', invoice: invoice || '', date: date || '', currency: currency || '',
+    rows, total: totalLine, text };
+}
+
+function scanAnalyze(text) {
+  const t = String(text || '').trim();
+  if (t.replace(/\s+/g, '').length < 12) { scanErr('Teksti është shumë i shkurtër për t’u kuptuar.'); return; }
+  scanErr('');
+  const parsed = parseInvoice(t);
+  SCAN = Object.assign({}, SCAN || {}, { text: t, parsed });
+  renderScanRes(parsed);
+}
+
+function renderScanRes(p) {
+  const box = $('#scanRes'); if (!box) return;
+  const knownSup = Store.data.suppliers.map(s => s.name).filter(Boolean);
+  const dl = '<datalist id="scanSupList">' + knownSup.map(n => `<option value="${esc(n)}"></option>`).join('') + '</datalist>';
+  const rowsHTML = (p.rows.length ? p.rows : [{ product: '', qty: '1', unit: 'copë', price: '' }]).map((r, i) => `
+    <div class="rg-row" data-rg="${i}">
+      <span class="ln">${i + 1}</span>
+      <input class="field" data-f="product" value="${esc(r.product)}" placeholder="Artikulli" aria-label="Artikulli ${i + 1}">
+      <input class="field num" data-f="qty" value="${esc(r.qty)}" inputmode="decimal" aria-label="Sasia ${i + 1}">
+      <input class="field" data-f="unit" value="${esc(r.unit || 'copë')}" list="unitList" aria-label="Njësia ${i + 1}">
+      <input class="field num" data-f="price" value="${esc(r.price)}" inputmode="decimal" aria-label="Çmimi ${i + 1}">
+      <button type="button" class="lx" data-scanrm="${i}" aria-label="Hiq rreshtin ${i + 1}">✕</button>
+    </div>`).join('');
+  const bad = [];
+  if (!p.supplier) bad.push('furnitori');
+  if (!p.invoice) bad.push('numri i faturës');
+  if (!p.date) bad.push('data');
+  if (!p.rows.length) bad.push('artikujt');
+  box.innerHTML = `
+    <h3>U lexua — kontrollo dhe plotëso</h3>
+    ${dl}
+    <div class="grid2">
+      <label class="fl"><span>Furnitori</span><input class="field" id="scanSup" list="scanSupList" value="${esc(p.supplier)}" placeholder="Emri i furnitorit"></label>
+      <label class="fl"><span>Fatura nr.</span><input class="field" id="scanInv" value="${esc(p.invoice)}" placeholder="p.sh. F-2026-0412"></label>
+      <label class="fl"><span>Data</span><input class="field" type="date" id="scanDate" value="${esc(p.date)}"></label>
+      <div class="fl"><span>Monedha</span>
+        <select class="field" id="scanCur">
+          <option value="ALL"${p.currency !== 'EUR' ? ' selected' : ''}>Lekë</option>
+          <option value="EUR"${p.currency === 'EUR' ? ' selected' : ''}>Euro</option>
+        </select>
+      </div>
+    </div>
+    <div class="rowgrid">
+      <div class="rg-head"><span>#</span><span>Artikulli</span><span>Sasia</span><span>Njësia</span><span>Çmimi</span><span></span></div>
+      <div id="scanRows">${rowsHTML}</div>
+    </div>
+    <div class="gridfoot"><button type="button" class="btn ghost sm" data-scandd="1">+ Shto artikull</button></div>
+    ${bad.length ? `<div class="scanwarn"><b>Nuk u lexua:</b> ${esc(bad.join(', '))}. Plotësoji me dorë më poshtë ose te formulari.</div>` : ''}
+    ${p.total != null ? `<p style="font-size:13px;color:var(--muted);margin:8px 0 0">Totali i lexuar në faturë: <b>${esc(money(p.total, p.currency || 'ALL'))}</b> — kontrolloje me shumën e rreshtave.</p>` : ''}
+    <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--muted)">Teksti i lexuar (për kontroll)</summary><div class="scantext">${esc(p.text.slice(0, 3000))}</div></details>
+    ${SCAN && SCAN.file && /^image\//i.test(SCAN.file.type || '') ? `<img class="scanimg" alt="Fatura e skanuar" src="${URL.createObjectURL(SCAN.file)}">` : ''}
+  `;
+  box.hidden = false;
+  const ap = $('#scanApply'); if (ap) ap.disabled = false;
+}
+
+function scanRowsFromDom() {
+  const out = [];
+  $$('#scanRows .rg-row').forEach(row => {
+    const g = f => { const el = row.querySelector('[data-f="' + f + '"]'); return el ? el.value.trim() : ''; };
+    const product = g('product');
+    if (product) out.push({ product, qty: g('qty') || '1', unit: g('unit') || 'copë', price: g('price') });
+  });
+  return out;
+}
+
+/* Mbledh atë që është në ekranin e skanerit (ti mund t’i ketë ndrequr fushat). */
+function scanCollect() {
+  const p = (SCAN && SCAN.parsed) || {};
+  const val = id => { const el = $('#' + id); return el ? String(el.value || '').trim() : ''; };
+  return {
+    supplier: val('scanSup') || p.supplier || '',
+    invoice: val('scanInv') || p.invoice || '',
+    date: val('scanDate') || p.date || '',
+    currency: val('scanCur') || p.currency || '',
+    lines: scanRowsFromDom()
+  };
+}
+
+/* Plotëson formularin e faturës — pa e mbishkruar atë që ka shkruar njeriu. */
+function applyScanned(data) {
+  data = data || {};
+  const alreadyOpen = $('#dPurchase') && $('#dPurchase').open === true;
+  if (!alreadyOpen) openPurchase({});
+  const put = (id, v) => { const el = $('#' + id); if (el && v != null && v !== '') el.value = v; };
+
+  put('fpSupplier', data.supplier);
+  put('fpInvoice', data.invoice);
+  put('fpDate', data.date);
+  if (data.currency === 'EUR' || data.currency === 'ALL') setCur(data.currency);
+
+  const lines = (data.lines || []).filter(l => l && String(l.product || '').trim());
+  /* Ndryshim i një fature ekzistuese: mos i fshi rreshtat pa u siguruar. */
+  if (lines.length && editingPurchase && FORM.lines.some(l => String(l.product || '').trim())) {
+    if (!confirm('Kjo faturë ka rreshta. T’i zëvendësoj me ata të skanimit?')) return -1;
+  }
+  if (lines.length) {
+    FORM.lines = lines.map(l => blankLine({ product: l.product, qty: l.qty || '1', unit: l.unit || 'copë', price: l.price }));
+    renderGrid();
+  }
+  if (data.file) {                    // skedari i faturës lidhet me dokumentin, jo me rreshtin
+    try { addFormFiles([data.file]); } catch (e) {}
+  }
+  syncSupplierBlock(); productHint();
+  return lines.length;
+}
+
+function scanApply() {
+  const p = SCAN && SCAN.parsed;
+  if (!p) { scanErr('Skano ose ngjit faturën më parë.'); return; }
+  const data = scanCollect();
+  data.file = SCAN.file || null; SCAN.file = null;
+  const n = applyScanned(data);
+  if (n === -1) { toast('U anulua — rreshtat mbetën siç ishin'); return; }
+  const d = $('#dScan'); if (d && d.close) d.close();
+  toast(n ? 'Fatura u plotësua · ' + n + ' rreshta' : 'Të dhënat e faturës u plotësuan');
+  const first = document.querySelector('#fpGrid [data-row="0"][data-f="qty"]');
+  if (first && first.focus) first.focus();
+}
+
 /* ---------- Evenimente ---------- */
 document.addEventListener('click', e => {
   const t = e.target.closest('button, a'); if (!t) return;
@@ -1716,6 +2162,24 @@ document.addEventListener('click', e => {
     case 'import-json': return $('#importFile').click();
     case 'load-demo': if (confirm('Të dhënat aktuale do të zëvendësohen me shembuj. Të vazhdohet?')) { Files.clear().catch(() => {}); Store.replace(demoData()); closeSupplier(); renderAll(); toast('U ngarkuan të dhënat shembull'); } return;
     case 'clear-all': if (confirm('Të fshihen të gjitha blerjet, furnitorët dhe produktet?')) { Files.clear().catch(() => {}); Store.replace({}); closeSupplier(); renderAll(); toast('Gjithçka u fshi'); } return;
+    case 'scan-open': scanOpen(); return;
+    case 'scan-pick': { const f = $('#scanFile'); if (f && f.click) f.click(); return; }
+    case 'scan-text': scanAnalyze($('#scanText').value); return;
+    case 'scan-apply': scanApply(); return;
+    case 'scan-rm': { const row = t.closest && t.closest('.rg-row'); if (row && row.remove) row.remove(); return; }
+    case 'scan-dd': {
+      const box = $('#scanRows'); if (!box) return;
+      const n = box.querySelectorAll('.rg-row').length;
+      box.insertAdjacentHTML('beforeend', `<div class="rg-row" data-rg="${n}">
+        <span class="ln">${n + 1}</span>
+        <input class="field" data-f="product" placeholder="Artikulli" aria-label="Artikulli ${n + 1}">
+        <input class="field num" data-f="qty" value="1" inputmode="decimal" aria-label="Sasia ${n + 1}">
+        <input class="field" data-f="unit" value="copë" list="unitList" aria-label="Njësia ${n + 1}">
+        <input class="field num" data-f="price" inputmode="decimal" aria-label="Çmimi ${n + 1}">
+        <button type="button" class="lx" data-scanrm="${n}" aria-label="Hiq rreshtin ${n + 1}">✕</button>
+      </div>`);
+      return;
+    }
     case 'conn-test': connTest(); return;
     case 'conn-edit': if (state.tab !== 'data') setTab('data'); connSettingsOpen(true); return;
     case 'conn-reset':
@@ -1774,6 +2238,21 @@ $('#fpGrid').addEventListener('focusout', e => {
   }, 120);
 });
 $('#importFile').addEventListener('change', e => { if (e.target.files[0]) importJSON(e.target.files[0]); e.target.value = ''; });
+/* skanuesi: skedar, tërheqje, ngjitje teksti */
+$('#scanFile').addEventListener('change', e => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) handleScanFile(f); });
+(function scanDropWiring() {
+  const drop = $('#scanDrop'); if (!drop || !drop.addEventListener) return;
+  ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, e => { if (e.preventDefault) e.preventDefault(); drop.classList.add('hot'); }));
+  ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, e => { if (e.preventDefault) e.preventDefault(); drop.classList.remove('hot'); }));
+  drop.addEventListener('drop', e => {
+    const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+    if (f) handleScanFile(f);
+  });
+})();
+(function scanPasteWiring() {
+  const box = $('#scanText'); if (!box || !box.addEventListener) return;
+  box.addEventListener('paste', () => setTimeout(() => { if (box.value.trim().length > 20) scanAnalyze(box.value); }, 60));
+})();
 $('#demoClear').addEventListener('click', () => { Files.clear().catch(() => {}); Store.replace({ meta: { demo: false, lastBuyer: '', seeded: true } }); renderAll(); toast('Gati. Regjistro blerjen e parë.'); });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && !$('#drawer').hidden && !document.querySelector('dialog[open]')) closeSupplier();
