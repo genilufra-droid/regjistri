@@ -32,6 +32,17 @@ Rregulla:
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
+  /* Vetëkontroll me GET (pa harxhuar kuotë): a është vendosur çelësi në server? */
+  if (req.method === 'GET') {
+    const hasKey = !!Deno.env.get('GEMINI_API_KEY');
+    return json({
+      ok: true,
+      gati: hasKey,
+      secret: hasKey ? 'GEMINI_API_KEY ✓' : 'Mungon GEMINI_API_KEY (Secrets)',
+      model: Deno.env.get('OCR_MODEL') || 'gemini-2.5-flash',
+      perdor: 'POST me { "image": "<base64>", "mime": "image/jpeg" }'
+    });
+  }
   if (req.method !== 'POST') return json({ error: 'Përdor POST.' }, 405);
 
   let image = '', mime = 'image/jpeg';
