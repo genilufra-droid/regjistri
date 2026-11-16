@@ -16,7 +16,7 @@ Stafi  →  https://biobes.github.io/regjistri   (GitHub Pages — vetëm index.
 > `regjistri-blerjeve` është në listë:
 > * me shenjën **Paused** → **Restore project**, prit 1 minutë, te faqja **Provo lidhjen**;
 > * **nuk është në listë** → projekti u fshi; krijo një të ri (10 minuta, hap pas hapi)
->   dhe vendos lidhjen — shih [`RREGULLO-LIDHJEN.md`](RREGULLO-LIDHJEN.md) §2.
+>   dhe vendos lidhjen — shih [`UDHEZUES-SUPABASE.md`](UDHEZUES-SUPABASE.md).
 >
 > Faqja tani e shpjegon vetë shkakun, ruan punën në pajisje derisa lidhja të
 > kthehet dhe e ndryshon lidhjen pa prekur kodin (*Të dhënat → Ndrysho lidhjen*).
@@ -25,6 +25,9 @@ Stafi  →  https://biobes.github.io/regjistri   (GitHub Pages — vetëm index.
 
 ## Hapi 1 — Supabase (10 minuta)
 
+> Udhëzim i plotë, hap pas hapi, me kontrolle dhe zgjidhje gabimesh:
+> [`UDHEZUES-SUPABASE.md`](UDHEZUES-SUPABASE.md). Shkurt:
+
 1. Hap [supabase.com](https://supabase.com) → **New project**.
    Emri: `regjistri-blerjeve` · Rajoni: **Frankfurt (eu-central-1)** — më afër Shqipërisë.
    Ruaj fjalëkalimin e databazës diku; nuk të duhet për faqen, por të duhet nëse hyn me psql.
@@ -32,20 +35,27 @@ Stafi  →  https://biobes.github.io/regjistri   (GitHub Pages — vetëm index.
    Kjo krijon tabelat, indekset, lejet, sinkronizimin live dhe bucket-in e faturave.
 3. **Settings → API**: kopjo dy vlera:
    - `Project URL` → p.sh. `https://abcdxyz.supabase.co`
-   - `anon public` key → varg i gjatë që nis me `eyJ…`
+   - çelësin **publishable** / **anon public** → `sb_publishable_…` ose `eyJ…`
+     (**jo** `service_role`/secret)
 
-## Hapi 2 — çelësat (✅ KRYER)
+## Hapi 2 — lidhja me bazën
 
-Te `docs/index.html` janë vendosur tashmë vlerat e projektit tuaj:
+Te `docs/index.html` (rreshtat 17–18) vendosen URL-ja dhe çelësi publik i projektit:
 
 ```html
 <script>
-  window.SUPABASE_URL      = 'https://vikcvnioouxnchwrnahk.supabase.co';
-  window.SUPABASE_ANON_KEY = 'sb_publishable_WY0dvvMh-ZBdpSwEXMN8JQ_I5iyTZmN';
+  window.SUPABASE_URL      = 'https://PROJEKTI.supabase.co';
+  window.SUPABASE_ANON_KEY = 'sb_publishable_…';
 </script>
 ```
 
-Skema është ekzekutuar dhe baza është mbushur me 56 blerje · 8 furnitorë · 12 artikuj.
+Mënyrat për t’i vendosur:
+
+- **për të gjithë stafin:** `node cakto-lidhjen.js https://PROJEKTI.supabase.co ÇELËSI` → commit → push;
+- **vetëm për një pajisje (provë):** faqja → **Të dhënat → Ndrysho lidhjen**.
+
+> Projekti i vjetër (`vikcvnioouxnchwrnahk`) është fshirë; derisa të vendoset lidhja e re,
+> faqja shfaq shenjën e kuqe dhe punon me kopjen vendore.
 
 ## Hapi 3 — GitHub Pages (5 minuta)
 
@@ -200,6 +210,8 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
 | `migrate.js` | çon të dhënat ekzistuese në Supabase |
 | `patch-supabase.py` | rikrijon `docs/index.html` nga prototipi, nëse ndryshon ndërfaqja |
 | `cakto-lidhjen.js` | ndryshon URL-në dhe çelësin te `docs/index.html` me një komandë |
+| `UDHEZUES-SUPABASE.md` | bazë e re në Supabase: hap pas hapi, kontrolle, gabimet dhe zgjidhjet |
+| `UDHEZUES-OCR.md` | leximi i fortë i faturave (Google Vision): çelësi, kuota, privatësia |
 | `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
 | `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
 | `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |

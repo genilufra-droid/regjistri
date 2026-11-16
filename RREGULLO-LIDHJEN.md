@@ -3,6 +3,11 @@
 Kjo shenjë e kuqe lart djathtas do të thotë vetëm një gjë: **faqja nuk po arrin
 dot bazën në Supabase**. Faqja vetë punon; ajo që mungon është lidhja me bazën.
 
+> **Baza duhet krijuar nga e para?** Mos e ndjek këtë skedar fjalë për fjalë — hap
+> [`UDHEZUES-SUPABASE.md`](UDHEZUES-SUPABASE.md), që jep hapat e krijimit, kontrollin,
+> lidhjen dhe zgjidhjet, me blloqe SQL gati për kopjim. Ky skedar mbetet për
+> diagnostikimin e shkaqeve.
+
 Nga 27 tetor 2026 faqja e shpjegon vetë shkakun: nën krye shfaqet një shirit i
 kuq me titullin e problemit, dhe te **Të dhënat → Lidhja me bazën** ka hapat e
 rregullimit, butonin *Provo lidhjen*, butonin *Ndrysho lidhjen* dhe një lidhje
