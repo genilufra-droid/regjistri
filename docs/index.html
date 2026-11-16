@@ -254,6 +254,15 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
 .scanwarn ul{margin:4px 0 0;padding-left:18px}
 .scantext{font-size:12.5px;color:var(--muted);max-height:140px;overflow:auto;background:var(--bg);border-radius:4px;padding:8px 10px;white-space:pre-wrap;margin-top:10px}
 .scanimg{max-width:100%;max-height:180px;border-radius:4px;border:1px solid var(--line);margin-top:10px}
+.scanreader{font-size:13px;color:var(--muted);margin:-2px 0 10px}
+.scanreader b{color:var(--ink)}
+.scanstrong{margin:14px 0;font-size:14px;border:1px solid var(--line);border-radius:var(--radius);padding:10px 12px;background:var(--bg)}
+.scanstrong summary{cursor:pointer;color:var(--accent);font-weight:600}
+.scanstrong .body{margin-top:10px}
+.scanstrong p{font-size:13px;color:var(--muted);margin:0 0 8px;line-height:1.45}
+.scanstrong input[type=text],.scanstrong input[type=password]{width:100%;margin-bottom:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px}
+.scanstrong label{display:flex;gap:8px;align-items:center;font-size:13.5px;margin:8px 0 0}
+.scanok{color:var(--accent);font-size:13px;margin:6px 0 0}
 
 
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:var(--radius);z-index:60;box-shadow:0 8px 24px rgba(0,0,0,.3);font-size:15px}
@@ -476,7 +485,7 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
 <dialog id="dScan">
   <div class="scanwrap">
     <h2>Skano faturën</h2>
-    <p class="scanintro">Leximi bëhet brenda pajisjes, pa server tjetër. Skedari i faturës ruhet te faturat; tekstet që lexohen plotësojnë formularin — ti kontrollon dhe shtyp <b>Ruaj faturën</b>.</p>
+    <p class="scanintro">Leximi bëhet brenda pajisjes; për foto të skanuara mund të përdoret edhe <b>leximi i fortë në internet</b> (Google Vision), që i lexon edhe tabelat e shtrembra. Skedari i faturës ruhet te faturat; tekstet plotësojnë formularin — ti kontrollon dhe shtyp <b>Ruaj faturën</b>.</p>
     <div class="drop" id="scanDrop">
       <button type="button" class="btn" data-act="scan-pick">📷 Zgjidh foto ose PDF</button>
       <small>ose tërhiq skedarin këtu · JPG, PNG, WEBP, PDF · deri në 15 MB</small>
@@ -486,6 +495,22 @@ tr.linerow:last-child td{border-bottom:1px solid var(--line)}
       <div class="bar"><i id="scanBar"></i></div>
       <span id="scanProgText">Po përgatitet…</span>
     </div>
+    <details class="scanstrong" id="scanStrongBox">
+      <summary>Lexim i fortë në internet (Google Vision) — më i saktë për foto</summary>
+      <div class="body">
+        <p>Çelësi merret falas te <b>Google Cloud → APIs &amp; Services → Credentials → Create credentials → API key</b>
+          (aktivizo “Cloud Vision API”). Kuota: <b>1.000 faqe në muaj falas</b>. Çelësi ruhet vetëm në këtë pajisje;
+          fotografia i dërgohet Google-it vetëm kur përdoret ky lexim.</p>
+        <input class="field" id="scanKey" type="password" autocomplete="off" spellcheck="false" placeholder="AIza…">
+        <div class="actions" style="justify-content:flex-start;gap:8px">
+          <button type="button" class="btn sm" data-act="scan-key-save">Ruaj çelësin</button>
+          <button type="button" class="btn ghost sm" data-act="scan-key-del">Fshi çelësin</button>
+        </div>
+        <label><input type="checkbox" id="scanStrongOn"> Përdor leximin e fortë kur ka çelës e internet</label>
+        <div id="scanKeyMsg"></div>
+        <p class="scanok" id="scanStrongState"></p>
+      </div>
+    </details>
     <details class="scanpaste">
       <summary>Ose ngjit tekstin e faturës</summary>
       <textarea id="scanText" class="field" rows="6" spellcheck="false" placeholder="Ngjit këtu tekstin e faturës (Ctrl+V)…"></textarea>
@@ -1746,6 +1771,226 @@ const SCAN_LIBS = {
   }
 };
 let SCAN = null;                 // { file, text, parsed }
+/* ---- lexim i fortë në internet (Google Cloud Vision) ----
+   Skanimet nuk i lexon vetëm Tesseract-i i pajisjes: kur ka çelës, fotografia
+   shkon te Google Vision (DOCUMENT_TEXT_DETECTION), i cili kthen çdo fjalë me
+   koordinatat e saj. Nga ato koordinata rindërtojmë rreshtat njësoj si te
+   PDF-ja — kështu kolonat (artikull · sasi · çmim · total) mbeten në një rresht
+   edhe pse skaneri i shërbimit i kthen si blloqe të veçanta.
+   Çelësi ruhet vetëm në këtë pajisje dhe duhet kufizuar te kjo faqe. */
+const VISION = {
+  lsKey: 'regjistri.vision',      /* çelësi API i Google-it */
+  onKey: 'regjistri.vision.on',   /* 0 = përdor vetëm pajisjen */
+  url: 'https://vision.googleapis.com/v1/images:annotate',
+  maxSide: 2600                   /* pikselët më të mëdhenj që dërgohen */
+};
+function visionKey() {
+  try { return String((LS && LS.getItem(VISION.lsKey)) || '').trim(); } catch (e) { return ''; }
+}
+function setVisionKey(k) {
+  try {
+    const v = String(k || '').trim();
+    if (v) LS.setItem(VISION.lsKey, v); else LS.removeItem(VISION.lsKey);
+    return true;
+  } catch (e) { return false; }
+}
+function visionOn() {
+  if (!visionKey()) return false;
+  try { return (LS && LS.getItem(VISION.onKey)) !== '0'; } catch (e) { return true; }
+}
+function setVisionOn(on) {
+  try { LS.setItem(VISION.onKey, on ? '1' : '0'); } catch (e) {}
+}
+
+/* Bajt → base64, në copa (fotot e mëdha nuk e fryjnë stack-un). */
+function bytesToBase64(u8) {
+  let s = '';
+  const CH = 0x8000;
+  for (let i = 0; i < u8.length; i += CH) s += String.fromCharCode.apply(null, u8.subarray(i, i + CH));
+  return btoa(s);
+}
+
+/* Fjalët e Google-it (me koordinata) → rreshta teksti, si te PDF-ja. */
+function ocrLinesFromAnnotation(ann) {
+  const words = [];
+  const pushWord = (w) => {
+    const vs = (w && w.boundingBox && w.boundingBox.vertices) || [];
+    if (!vs.length) return;
+    const txt = (w.symbols || []).map(s => (s && s.text) || '').join('');
+    if (!txt.trim()) return;
+    const xs = vs.map(v => Number(v && v.x) || 0);
+    const ys = vs.map(v => Number(v && v.y) || 0);
+    const y1 = Math.min.apply(null, ys), y2 = Math.max.apply(null, ys);
+    words.push({
+      t: txt, x: Math.min.apply(null, xs), x2: Math.max.apply(null, xs),
+      y: (y1 + y2) / 2, h: Math.max(1, y2 - y1)
+    });
+  };
+  ((ann && ann.pages) || []).forEach(pg => {
+    ((pg && pg.blocks) || []).forEach(b => {
+      ((b && b.paragraphs) || []).forEach(par => {
+        ((par && par.words) || []).forEach(pushWord);
+      });
+    });
+  });
+  if (!words.length) return [];
+  words.sort((a, b) => a.y - b.y || a.x - b.x);
+  const rows = [];
+  words.forEach(w => {
+    const tol = Math.max(6, w.h * 0.6);
+    const row = rows.find(r => Math.abs(r.y - w.y) <= tol);
+    if (!row) { rows.push({ y: w.y, ws: [w] }); return; }
+    row.ws.push(w);
+    row.y = (row.y * (row.ws.length - 1) + w.y) / row.ws.length;
+  });
+  return rows.map(r => r.ws.sort((a, b) => a.x - b.x).map(w => w.t).join(' ')
+    .replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+
+/* Trupi i kërkesës për Vision. */
+function visionRequest(b64) {
+  return {
+    requests: [{
+      image: { content: b64 },
+      features: [{ type: 'DOCUMENT_TEXT_DETECTION' }],
+      imageContext: { languageHints: ['sq', 'en'] }   /* shqip + anglisht */
+    }]
+  };
+}
+
+/* Përgjigja → tekst. Rreshtat e koordinatave janë më besnikë ndaj tabelës;
+   nëse dalin shumë më pak se teksti i gatshëm, merret ai i gatshmi. */
+function visionText(r) {
+  const ann = r && r.fullTextAnnotation;
+  if (!ann) return '';
+  const raw = String(ann.text || '').trim();
+  const fromWords = ocrLinesFromAnnotation(ann).join('\n');
+  if (!fromWords) return raw;
+  if (raw && fromWords.length < raw.length * 0.5) return raw;
+  return fromWords;
+}
+
+/* Gabimet e Google-it → shqip, me hapin që duhet ndërmarrë. */
+function visionError(status, body) {
+  const b = String(body || '');
+  if (/has not been used|is disabled|not enabled|SERVICE_DISABLED/i.test(b))
+    return 'API-ja “Cloud Vision” s’është aktivizuar në projektin e Google — hape në console dhe shtyp “Enable”.';
+  if (/API key not valid|API_KEY_INVALID|invalid.*(api )?key/i.test(b))
+    return 'Çelësi i Google Vision nuk është i vlefshëm — kopjoje sërish te Google Cloud → APIs & Services → Credentials.';
+  if (/billing/i.test(b))
+    return 'Projekti i Google-it kërkon faturimin e aktivizuar (edhe për kuotën falas).';
+  if (status === 403) return 'Google-i e refuzoi çelësin (403). Aktivizo “Cloud Vision API” dhe kufizo çelësin vetëm te kjo faqe (HTTP referrer).';
+  if (status === 400) return 'Fotografia nuk u pranua nga Google-i (400) — provo një foto tjetër më të vogël.';
+  if (status === 429) return 'Kuota mujore e leximit u tejkalua (1.000 faqe falas).';
+  return 'Leximi në internet dështoi (HTTP ' + status + ').';
+}
+
+/* Fotografia përgatitet: zvogëlohet dhe kthehet në JPEG (më shpejt, më pak bajt). */
+async function visionImage(blob) {
+  let out = blob;
+  try {
+    if (typeof document !== 'undefined' && document.createElement && typeof createImageBitmap === 'function') {
+      const bmp = await createImageBitmap(blob);
+      const k = Math.min(1, VISION.maxSide / Math.max(bmp.width || 1, bmp.height || 1));
+      if (k < 1 || (blob.size || 0) > 900000) {
+        const cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round((bmp.width || 1) * k));
+        cv.height = Math.max(1, Math.round((bmp.height || 1) * k));
+        cv.getContext('2d').drawImage(bmp, 0, 0, cv.width, cv.height);
+        const jpg = await new Promise(r => cv.toBlob(r, 'image/jpeg', 0.92));
+        if (jpg) out = jpg;
+      }
+      if (bmp.close) bmp.close();
+    }
+  } catch (e) { /* pa zvogëlim — dërgohet si është */ }
+  const buf = await out.arrayBuffer();
+  if (buf.byteLength > 9 * 1024 * 1024) throw new Error('Fotografia është shumë e madhe edhe pas zvogëlimit.');
+  return bytesToBase64(new Uint8Array(buf));
+}
+
+/* Leximi i fortë: foto → tekst. Hedh gabim me shpjegim shqip kur dështon. */
+async function visionRead(blob) {
+  const key = visionKey();
+  if (!key) throw new Error('S’ka çelës për leximin e fortë.');
+  scanProg('Po përgatitet fotografia…', 0.2);
+  const b64 = await visionImage(blob);
+  scanProg('Po lexohet në server (Google Vision)…', 0.5);
+  let res;
+  try {
+    res = await fetch(VISION.url + '?key=' + encodeURIComponent(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(visionRequest(b64))
+    });
+  } catch (e) { throw new Error('Nuk u arrit shërbimi i leximit (internet?).'); }
+  let body = '';
+  try { body = await res.text(); } catch (e) {}
+  if (!res.ok) throw new Error(visionError(res.status, body));
+  let json = {};
+  try { json = JSON.parse(body); } catch (e) { throw new Error('Përgjigje e palexueshme nga shërbimi i leximit.'); }
+  const r0 = (json.responses || [])[0] || {};
+  if (r0.error) throw new Error(visionError(r0.error.code || 0, r0.error.message || ''));
+  const text = visionText(r0);
+  if (!text) throw new Error('Shërbimi nuk lexoi asnjë tekst në këtë foto.');
+  scanProg('Teksti u lexua (Google Vision)', 1);
+  return text;
+}
+
+/* ---- cilësimet e leximit të fortë (ruhen vetëm në këtë pajisje) ---- */
+function scanKeyMsg(txt, isErr) {
+  const el = $('#scanKeyMsg');
+  if (!el) return;
+  el.textContent = txt || '';
+  el.className = isErr ? 'scanwarn' : 'scanok';
+}
+function scanStrongUI() {
+  const inp = $('#scanKey'), chk = $('#scanStrongOn');
+  const saved = !!visionKey();
+  if (inp) {
+    inp.value = '';
+    inp.placeholder = saved ? 'Çelës i ruajtur — shkruaj një të re për ta zëvendësuar'
+      : 'AIza… (39 shkronja, nga Google Cloud → Credentials)';
+    inp.type = 'password';
+  }
+  if (chk) chk.checked = visionOn();
+  const box = $('#scanStrongState');
+  if (box) box.textContent = saved
+    ? '✓ Leximi i fortë është gati për këtë pajisje.'
+    : 'Pa çelës, fotot lexohen brenda pajisjes (Tesseract) — mjafton për fatura të qarta.';
+}
+let SCAN_UI_BOUND = false;
+function scanStrongBind() {
+  if (SCAN_UI_BOUND) return;
+  SCAN_UI_BOUND = true;
+  const chk = $('#scanStrongOn');
+  if (chk && chk.addEventListener) {
+    chk.addEventListener('change', () => {
+      setVisionOn(!!chk.checked);
+      scanStrongUI();
+      toast(chk.checked ? 'Leximi i fortë u aktivizua' : 'Fotot lexohen brenda pajisjes');
+    });
+  }
+}
+function scanSaveKey() {
+  const inp = $('#scanKey');
+  const v = inp ? String(inp.value || '').trim() : '';
+  if (!v) { scanKeyMsg('Shkruaj çelësin para se ta ruash.', true); return; }
+  if (!/^AIza[0-9A-Za-z_-]{20,}$/.test(v)) {
+    scanKeyMsg('Ky nuk duket çelës i Google-it (fillojnë me “AIza”). Kopjo çelësin e plotë.', true);
+    return;
+  }
+  if (!setVisionKey(v)) { scanKeyMsg('Shfletuesi nuk lejoi ruajtjen (regjim privat?).', true); return; }
+  setVisionOn(true);
+  const chked = $('#scanStrongOn'); if (chked) chked.checked = true;
+  scanStrongUI();
+  scanKeyMsg('', false);
+  toast('Çelësi u ruajt vetëm në këtë pajisje');
+}
+function scanDelKey() {
+  setVisionKey('');
+  scanStrongUI();
+  toast('Çelësi u fshi nga kjo pajisje');
+}
 
 function loadScriptOnce(src) {
   return new Promise((res, rej) => {
@@ -1791,6 +2036,7 @@ function scanErr(msg) { const e = $('#scanErr'); if (e) e.textContent = msg || '
 
 function scanOpen() {
   scanErr(''); scanProg(null, null);
+  scanStrongBind(); scanStrongUI();
   const res = $('#scanRes'); if (res) { res.hidden = true; res.innerHTML = ''; }
   const ap = $('#scanApply'); if (ap) ap.disabled = true;
   const t = $('#scanText'); if (t) t.value = '';
@@ -1843,7 +2089,11 @@ async function scanPdfPagesText(jsPdf, file) {
 }
 async function scanPdfPageImage(jsPdf, doc) {
   const page = await doc.getPage(1);
-  const vp = page.getViewport({ scale: 2 });
+  /* Skanimet lexohen më mirë me rezolucion të lartë (rreth 2.800 px në anën
+     më të gjatë, ~300 DPI për A4) — por pa e fryrë memorien e telefonit. */
+  const base = page.getViewport({ scale: 1 });
+  const scale = Math.max(2, Math.min(3.2, 2800 / Math.max(base.width || 595, base.height || 842)));
+  const vp = page.getViewport({ scale });
   const cv = document.createElement('canvas');
   cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
   await page.render({ canvasContext: cv.getContext('2d'), viewport: vp }).promise;
@@ -1857,6 +2107,7 @@ async function scanReadFile(file) {
     const { doc, text } = await scanPdfPagesText(jsPdf, file);
     const clean = String(text || '').replace(/\s+/g, '');
     if (clean.length >= 40) {                          // PDF me tekst: pa OCR
+      SCAN = Object.assign({}, SCAN || {}, { reader: 'pdf', strongErr: '' });
       scanProg('Teksti u lexua nga PDF-ja', 1);
       return text;
     }
@@ -1868,9 +2119,23 @@ async function scanReadFile(file) {
   return await scanReadImage(file);
 }
 async function scanReadImage(blob) {
-  scanProg('Po përgatitet leximi i fotos…', 0.1);
+  SCAN = Object.assign({}, SCAN || {}, { reader: '', strongErr: '' });
+  if (visionOn()) {
+    try {
+      const strong = await visionRead(blob);
+      if (String(strong || '').replace(/\s+/g, '').length >= 12) {
+        SCAN.reader = 'vision';
+        return strong;
+      }
+    } catch (e) {
+      SCAN.strongErr = (e && e.message) || 'Leximi në internet dështoi.';
+    }
+  }
+  SCAN.reader = 'device';
+  scanProg('Po përgatitet leximi brenda pajisjes…', 0.1);
   const T = await ensureScanLib('ocr');
   const out = await T.recognize(blob, 'sqi+eng', {
+    params: { preserve_interword_spaces: '1', user_defined_dpi: '300' },
     logger: m => {
       if (!m) return;
       if (m.status) {
@@ -2027,11 +2292,15 @@ function parseInvoice(raw, knownSuppliers) {
       !/fatur|invoice|dat[ëe]|total|tvsh|bler[eë]s|www\./i.test(l));
     if (m && !/^(?:blo|shitesi|sellers?)$/i.test(String(m[1]).trim())) supplier = m[1];
     else if (company) supplier = String(company).split('|')[0];
+    /* Kujdes: “tel” pa kufi fjale hante “HOTEL”, “TELEKOM”… — prandaj \btel\b. */
     else supplier = lines.find(l => /[A-Za-zËëÇçÀ-ÿ]{3}/.test(l) &&
-      !/fatur|invoice|dat[ëe]|date|nr\.|total|tvsh|vat|tel|email|@|www\.|bills\.al|qr/i.test(l)) || '';
+      !/fatur|invoice|dat[ëe]|date|nr\.|total|tvsh|\bvat\b|\btel\b|email|@|www\.|bills\.al|\bqr\b/i.test(l)) || '';
     supplier = String(supplier)
       .split(/emri\s*i\s*bler[eë]sit|adresa|\bnipt\b|\bnivf\b|numri\s*i\s*identifikimit|\btel\b|\btelefon\w*|\bemail\b|@|\biban\b|\bns\b/i)[0]
-      .replace(/[|;].*$/, '').replace(/\s{2,}/g, ' ').replace(/^[^\wËëÇçÀ-ÿ]+/, '').trim().slice(0, 60);
+      .replace(/[|;].*$/, '').replace(/\s{2,}/g, ' ').replace(/^[^\wËëÇçÀ-ÿ]+/, '')
+      .trim()
+      .replace(/\s+\d{1,6}$/, '')                      // numër i vetmuar në fund (nga kolona tjetër)
+      .trim().slice(0, 60);
   }
 
   /* ---------- rreshtat ----------
@@ -2118,9 +2387,13 @@ function parseInvoice(raw, knownSuppliers) {
 
     let name = toks.slice(0, cut).join(' ')
       .replace(/^\d{1,4}[.)]?\s+/, '')                 // nr. i rreshtit
+      .replace(/^\d{1,4}[.:]\d{1,4}\s+/, '')          // kodi i artikullit: “1.7051”, “1:7051”
+      .replace(/^[“”"'`\s]+/, '')                      // thonjëza nga OCR-i
+      .replace(/^[^A-Za-zËëÇçÀ-ÿ]+/, '')               // shenja përpara emrit (":Dhome" → "Dhome")
       .replace(/^\d{2,7}\s+/, '')                      // kodi i artikullit
       .replace(/[|;]+/g, ' ')
       .replace(/\s{2,}/g, ' ')
+      .replace(/[\s:;,\-–]+$/, '')                    // mbeturina në fund
       .trim();
     if (name.length < 2 || !/[A-Za-zËëÇçÀ-ÿ]{2}/.test(name)) return;
     /* Rresht me numra por pa aritmetikë të qartë: e mbajmë emrin për rreshtin rezervë. */
@@ -2236,6 +2509,10 @@ function renderScanRes(p) {
   if (!p.rows.length) bad.push('artikujt');
   box.innerHTML = `
     <h3>U lexua — kontrollo dhe plotëso</h3>
+    ${SCAN && SCAN.reader === 'vision' ? '<p class="scanreader">U lexua me <b>Google Vision</b> (lexim i fortë në internet).</p>' : ''}
+    ${SCAN && SCAN.reader === 'device' ? '<p class="scanreader">U lexua <b>brenda pajisjes</b> (Tesseract). Nëse diçka mungon, provo “Lexim i fortë në internet”.</p>' : ''}
+    ${SCAN && SCAN.reader === 'pdf' ? '<p class="scanreader">Teksti u mor drejt nga <b>PDF-ja</b> (pa OCR).</p>' : ''}
+    ${SCAN && SCAN.strongErr ? `<div class="scanwarn"><b>Leximi i fortë s’u krye:</b> ${esc(SCAN.strongErr)} — u përdor leximi brenda pajisjes.</div>` : ''}
     ${dl}
     <div class="grid2">
       <label class="fl"><span>Furnitori</span><input class="field" id="scanSup" list="scanSupList" value="${esc(p.supplier)}" placeholder="Emri i furnitorit"></label>
@@ -2386,6 +2663,8 @@ document.addEventListener('click', e => {
     case 'scan-open': scanOpen(); return;
     case 'scan-pick': { const f = $('#scanFile'); if (f && f.click) f.click(); return; }
     case 'scan-text': scanAnalyze($('#scanText').value); return;
+    case 'scan-key-save': scanSaveKey(); return;
+    case 'scan-key-del': scanDelKey(); return;
     case 'scan-apply': scanApply(); return;
     case 'scan-rm': { const row = t.closest && t.closest('.rg-row'); if (row && row.remove) row.remove(); return; }
     case 'scan-dd': {

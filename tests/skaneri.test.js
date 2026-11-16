@@ -41,7 +41,15 @@ function table(name) {
   return b;
 }
 
+/* localStorage i vogël në kujtesë (çelësi i leximit të fortë ruhet aty). */
+const MEM = new Map();
+const memStore = {
+  getItem: k => (MEM.has(k) ? MEM.get(k) : null),
+  setItem: (k, v) => { MEM.set(k, String(v)); },
+  removeItem: k => { MEM.delete(k); }
+};
 global.window = {
+  localStorage: memStore,
   SUPABASE_URL: 'https://demo.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_demo1234567890abcdef',
   scrollTo() {}, addEventListener() {}
@@ -341,6 +349,137 @@ const TESTS = `
       A.strictEqual(FORM.lines.length, p.rows.length, f + ': rreshtat në formular');
       A.ok(FORM.lines.every(l => +l.qty > 0 && +l.price > 0), f + ': sasi/çmim bosh');
     }
+  });
+
+  /* ---------------- leximi i fortë në internet (Google Vision) ---------------- */
+  const KEY = 'AIzaSyTESTKEY1234567890abcdefghijklmnop';
+
+  /* Fjalë siç i kthen Vision: tekst + koordinata (x, y). */
+  const word = (txt, x, y, w) => ({
+    symbols: String(txt).split('').map(ch => ({ text: ch })),
+    boundingBox: { vertices: [{ x, y: y - 9 }, { x: x + (w || txt.length * 9), y: y - 9 },
+      { x: x + (w || txt.length * 9), y: y + 9 }, { x, y: y + 9 }] }
+  });
+  /* Fatura e skanuar: çdo kolonë vjen si bllok më vete (siç bën Vision në tabela). */
+  const blk = words => ({ paragraphs: [{ words }] });
+  const VISION_ANN = {
+    text: 'ARK HOTEL\\nNr. Fature 110514\\nData 31/10/2026\\nDhome Hotel 2 40 80\\nTOTALI 80 EUR',
+    pages: [{
+      blocks: [
+        blk([word('ARK', 60, 60, 40), word('HOTEL', 105, 60, 60)]),
+        blk([word('Nr.', 60, 100, 25), word('Fature', 90, 100, 55), word('110514', 150, 100, 55)]),
+        blk([word('Data', 60, 140, 35), word('31/10/2026', 100, 140, 90)]),
+        blk([word('Dhome', 60, 400, 50), word('Hotel', 115, 400, 45)]),
+        blk([word('2', 380, 400, 10)]),
+        blk([word('40', 430, 400, 20)]),
+        blk([word('80', 520, 400, 20)]),
+        blk([word('TOTALI', 60, 520, 60), word('80', 430, 520, 20), word('EUR', 470, 520, 35)])
+      ]
+    }]
+  };
+
+  await T('Leximi i fortë: çelësi ruhet vetëm në këtë pajisje', async () => {
+    A.strictEqual(visionKey(), '');
+    A.strictEqual(visionOn(), false, 'pa çelës nuk aktivizohet');
+    A.ok(setVisionKey(KEY));
+    A.strictEqual(visionKey(), KEY);
+    A.strictEqual(visionOn(), true);
+    setVisionOn(false);
+    A.strictEqual(visionOn(), false, 'kutiza e fikur respektohet');
+    setVisionOn(true);
+    setVisionKey('');
+    A.strictEqual(visionKey(), '');
+    A.strictEqual(visionOn(), false);
+  });
+
+  await T('Leximi i fortë: kolonat e tabelës ribashkohen në një rresht', async () => {
+    const lines = ocrLinesFromAnnotation(VISION_ANN);
+    A.strictEqual(lines.length, 5, 'rreshtat: ' + JSON.stringify(lines));
+    A.strictEqual(lines[3], 'Dhome Hotel 2 40 80');
+  });
+
+  await T('Leximi i fortë: teksti i Vision-it e plotëson faturën', async () => {
+    const p = parseInvoice(visionText({ fullTextAnnotation: VISION_ANN }), []);
+    A.strictEqual(p.supplier, 'ARK HOTEL');
+    A.strictEqual(p.invoice, '110514');
+    A.strictEqual(p.date, '2026-10-31');
+    A.strictEqual(p.currency, 'EUR');
+    A.strictEqual(p.total, 80);
+    A.strictEqual(p.rows.length, 1, 'rreshtat: ' + JSON.stringify(p.rows));
+    A.strictEqual(+p.rows[0].qty, 2);
+    A.strictEqual(+p.rows[0].price, 40);
+  });
+
+  await T('Leximi i fortë: kërkesa shkon te Vision me çelësin e me shqip+anglisht', async () => {
+    let called = null;
+    const realFetch = global.fetch;
+    global.fetch = async (url, opt) => {
+      called = { url, opt };
+      return { ok: true, status: 200, async text() { return JSON.stringify({ responses: [{ fullTextAnnotation: VISION_ANN }] }); } };
+    };
+    try {
+      setVisionKey(KEY); setVisionOn(true);
+      const txt = await visionRead(new Blob([new Uint8Array([1, 2, 3])], { type: 'image/png' }));
+      A.ok(/images:annotate\\?key=AIza/.test(called.url), 'URL: ' + called.url);
+      A.strictEqual(called.opt.method, 'POST');
+      const body = JSON.parse(called.opt.body);
+      A.strictEqual(body.requests[0].features[0].type, 'DOCUMENT_TEXT_DETECTION');
+      A.deepStrictEqual(body.requests[0].imageContext.languageHints, ['sq', 'en']);
+      A.ok(body.requests[0].image.content.length > 0, 'fotoja shkoi bosh');
+      A.ok(/Dhome Hotel 2 40 80/.test(txt), 'teksti: ' + txt);
+    } finally { global.fetch = realFetch; setVisionKey(''); }
+  });
+
+  await T('Leximi i fortë: çelësi i gabuar → shpjegim shqip, jo “error 403”', async () => {
+    const realFetch = global.fetch;
+    global.fetch = async () => ({ ok: false, status: 403, async text() {
+      return JSON.stringify({ error: { code: 403, message: 'API key not valid. Please pass a valid API key.' } }); } });
+    let msg = '';
+    try {
+      setVisionKey(KEY); setVisionOn(true);
+      await visionRead(new Blob([new Uint8Array([1])], { type: 'image/png' }));
+    } catch (e) { msg = e.message; } finally { global.fetch = realFetch; setVisionKey(''); }
+    A.ok(/nuk është i vlefshëm|e refuzoi çelësin/i.test(msg), msg);
+    A.ok(/Credentials|Cloud Vision/i.test(msg), 'duhet të thotë ku rregullohet: ' + msg);
+  });
+
+  await T('Leximi i fortë dështon → skaneri vazhdon brenda pajisjes', async () => {
+    const realFetch = global.fetch, realT = global.window.Tesseract;
+    global.fetch = async () => ({ ok: false, status: 500, async text() { return 'boom'; } });
+    global.window.Tesseract = { recognize: async () => ({ data: { text: 'FURNITOR XYZ\\nNr. Fature 7\\nTotali 10.00 EUR' } }) };
+    let txt = '';
+    try {
+      setVisionKey(KEY); setVisionOn(true);
+      txt = await scanReadImage(new Blob([new Uint8Array([9])], { type: 'image/png' }));
+      A.strictEqual(SCAN.reader, 'device', 'burimi: ' + SCAN.reader);
+      A.ok(/HTTP 500/.test(SCAN.strongErr || ''), 'gabimi: ' + SCAN.strongErr);
+      A.ok(/FURNITOR XYZ/.test(txt), 'teksti i paisjes: ' + txt);
+    } finally { global.fetch = realFetch; global.window.Tesseract = realT; setVisionKey(''); }
+  });
+
+  await T('Paneli i skanerit tregon kur leximi i fortë është gati', async () => {
+    scanOpen();
+    A.ok(/brenda pajisjes/i.test(document.getElementById('scanStrongState').textContent), 'pa çelës: ' + document.getElementById('scanStrongState').textContent);
+    setVisionKey(KEY);
+    scanOpen();
+    const st = document.getElementById('scanStrongState').textContent;
+    A.ok(/gati/i.test(st), 'me çelës: ' + st);
+    A.strictEqual(document.getElementById('scanStrongOn').checked, true);
+    setVisionKey('');
+    scanOpen();
+    A.strictEqual(document.getElementById('scanStrongOn').checked, false);
+  });
+
+  await T('Pyetja e çelësit: input-i refuzon diçka që s’është çelës Google', async () => {
+    const el = document.getElementById('scanKey');
+    el.value = 'sk-123';
+    scanSaveKey();
+    A.strictEqual(visionKey(), '', 'u ruajt një çelës i pavlefshëm');
+    el.value = KEY;
+    scanSaveKey();
+    A.strictEqual(visionKey(), KEY);
+    scanDelKey();
+    A.strictEqual(visionKey(), '');
   });
 
   __done();

@@ -122,8 +122,21 @@ Te skeda **Blerjet** (butoni **📷 Skano faturën**) ose brenda formularit të 
 | Rruga | Kur | Saktësia |
 |---|---|---|
 | **PDF me tekst** (bills.al, E-Fiskal, fatura nga sistemi i furnitorit) | provohet e para | shumë e lartë — lexohet teksti origjinal, pa OCR |
-| **Foto / PDF i skanuar** | kur s’ka tekst | OCR me Tesseract.js (shqip + anglisht) |
+| **Google Vision** — *lexim i fortë në internet* | foto ose PDF i skanuar, kur ka çelës | shumë e lartë, edhe për tabela të shtrembra; ~1.000 faqe/muaj falas |
+| **Tesseract.js** — brenda pajisjes | pa çelës, ose kur leximi i fortë dështon | e mirë për fatura të qarta |
 | **Ngjit tekstin** | kur CDN-ja nuk hapet ose OCR-i ngatërron | e njëjta logjikë, tekst i sigurt |
+
+### Leximi i fortë (Google Vision) — 5 minuta, falas
+
+Fotoja shkon te Google Vision, i cili kthen **çdo fjalë me koordinatat e saj**; faqja i
+grumbullon fjalët sipas rreshtit (y) dhe kolonës (x), prandaj tabela e skanuar del si
+tabelë e vërtetë — jo si tekst i përzier. Çelësi vendoset **një herë për pajisje** te
+*Skano faturën → Lexim i fortë në internet → Ruaj çelësin* dhe ruhet vetëm në atë browser.
+
+- **Hapat, kufizimi i çelësit, kuota, privatësia dhe gabimet e mundshme:** [`UDHEZUES-OCR.md`](UDHEZUES-OCR.md)
+- Pa çelës (ose me kutizën e fikur) **asgjë nuk del nga pajisja**: lexon Tesseract-i.
+- Nëse leximi i fortë dështon (internet, çelës, kuotë), faqja e thotë shkakun në shqip dhe
+  kalon vetë te leximi brenda pajisjes — skanimi nuk mbetet bosh.
 
 ### Çfarë kupton lexuesi te faturat shqipe
 
@@ -149,8 +162,9 @@ Te skeda **Blerjet** (butoni **📷 Skano faturën**) ose brenda formularit të 
   `PA TVSH:` + `TVSH:`, krahasimi bëhet me totalin **pa TVSH**, sepse çmimet e rreshtave
   janë pa TVSH.
 
-- **Pa server, pa çelës API, pa kosto:** OCR-i dhe lexuesi i PDF-së shkarkohen vetëm herën e
-  parë (~5–8 MB) nga CDN-ja dhe punojnë në pajisje; ka edhe CDN rezervë.
+- **Pa server:** lexuesi i PDF-së dhe Tesseract-i shkarkohen vetëm herën e parë (~5–8 MB)
+  nga CDN-ja dhe punojnë në pajisje; ka edhe CDN rezervë. Leximi i fortë (Google Vision)
+  është zgjedhje: pa çelës s’ka kosto dhe s’ka dërgim jashtë pajisjes.
 - **Gjithmonë konfirmon njeriu** — asnjë faturë nuk ruhet vetë.
 - **Ndryshim fature ekzistuese:** nëse fatura ka rreshta, faqja kërkon konfirmim para se t’i
   zëvendësojë.
@@ -189,7 +203,7 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
 | `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
 | `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
 | `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |
-| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur (17 prova, me 4 fatura reale — dy prej tyre skanime) |
+| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur, plus leximi i fortë me Google Vision (24 prova, me 4 fatura reale — dy prej tyre skanime) |
 | `tests/fixtures/fature-bills.txt` | tekst i një PDF-je të vërtetë fiskale (identifikuesit e zëvendësuar) |
 | `tests/live.test.js` | provë e vërtetë kundër projektit (7 prova) — `SUPABASE_URL=… SUPABASE_KEY=… node tests/live.test.js` |
 | `tests/staf.test.js` | provë me dy “pajisje” kundër bazës reale (17 prova) |
