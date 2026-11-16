@@ -48,6 +48,7 @@ const memStore = {
   setItem: (k, v) => { MEM.set(k, String(v)); },
   removeItem: k => { MEM.delete(k); }
 };
+global.__mem = memStore;         // TESTS ekzekutohet në kontekst global (vm)
 global.window = {
   __skipBucketProbe: true,      // provat nuk shkojnë në rrjet
   localStorage: memStore,
@@ -391,6 +392,35 @@ const TESTS = `
     setVisionKey('');
     A.strictEqual(visionKey(), '');
     A.strictEqual(visionOn(), false);
+  });
+
+  await T('Çelësi i faqes: punon pa konfigurim, pajisja mund ta ndryshojë ose ta fikë', async () => {
+    const SAVED = 'regjistri.vision';
+    const ON = 'regjistri.vision.on';
+    __mem.removeItem(SAVED); __mem.removeItem(ON);
+    const had = window.GOOGLE_VISION_KEY;
+    window.GOOGLE_VISION_KEY = KEY;
+    try {
+      A.strictEqual(visionKeySource(), 'default');
+      A.strictEqual(visionKey(), KEY, 'çelësi i faqes nuk u mor');
+      A.strictEqual(visionOn(), true, 'me çelës të faqes leximi i fortë duhet aktiv');
+
+      const MINE = 'AIzaSyPAJISJA1234567890abcdefghijklmnopq';
+      setVisionKey(MINE);
+      A.strictEqual(visionKeySource(), 'saved');
+      A.strictEqual(visionKey(), MINE, 'çelësi i pajisjes nuk mbizotëroi');
+
+      setVisionKey('');                       /* “Fshi çelësin” = fikje për këtë pajisje */
+      A.strictEqual(visionKeySource(), 'off');
+      A.strictEqual(visionKey(), '', 'fikja nuk u respektua');
+      A.strictEqual(visionOn(), false);
+
+      __mem.removeItem(SAVED); __mem.setItem(ON, '1');
+      A.strictEqual(visionKey(), KEY, 'pas rivendosjes nuk u kthye çelësi i faqes');
+    } finally {
+      window.GOOGLE_VISION_KEY = had;
+      __mem.removeItem(SAVED); __mem.removeItem(ON);
+    }
   });
 
   await T('Leximi i fortë: kolonat e tabelës ribashkohen në një rresht', async () => {
