@@ -143,16 +143,17 @@ Te skeda **Blerjet** (butoni **📷 Skano faturën**) ose brenda formularit të 
 | **Tesseract.js** — brenda pajisjes | pa çelës, ose kur leximi i fortë dështon | e mirë për fatura të qarta |
 | **Ngjit tekstin** | kur CDN-ja nuk hapet ose OCR-i ngatërron | e njëjta logjikë, tekst i sigurt |
 
-### Leximi i fortë (Google Vision) — i gatshëm, pa konfigurim
+### Leximi i fortë — dy rrugë, asnjë çelës në telefon
 
-**Çelësi është vendosur tashmë në faqe** (`window.GOOGLE_VISION_KEY`), prandaj çdo pajisje e
-përdor automatikisht: hap *Skano faturën* dhe skano një foto — nën rezultat shkruan
-“U lexua me **Google Vision**”. Për ta kontrolluar me një klik: **Provo çelësin**.
+1. **Në server (e rekomanduara):** Edge Function `ocr` në Supabase e mban çelësin si *secret*
+   dhe u shërben të gjitha pajisjeve. Asnjë çelës nuk shkruhet askund, as në faqe.
+   Udhëzuesi 6-minutësh: [`SUPABASE-OCR.md`](SUPABASE-OCR.md) (Gemini — kuota falas, pa kartë).
+2. **Google Vision me çelësin e faqes:** punon vetëm nëse projekti i Google-it ka **faturim
+   (Billing)** të aktivizuar; pa të, Google kthen 403 dhe faqja kalon te Tesseract.
+   Hapat: [`UDHEZUES-OCR.md`](UDHEZUES-OCR.md).
 
-- Kufizoje çelësin te faqja (**HTTP referrers** + vetëm *Cloud Vision API*) — hapi 5 te
-  [`UDHEZUES-OCR.md`](UDHEZUES-OCR.md). Pa kufizim, kush e hap faqen mund ta përdorë çelësin.
-- Një pajisje mund të vendosë **çelësin e vet** (Ruaj çelësin) ose ta **fikë** fare
-  (Fshi çelësin → ajo pajisje lexon vetëm brenda saj, me Tesseract).
+Radha e leximit: **PDF me tekst → serveri → Google Vision → Tesseract (pajisja)**.
+Nën rezultat shfaqet vetëm një rresht i shkurtër me burimin e leximit.
 
 Fotoja shkon te Google Vision, i cili kthen **çdo fjalë me koordinatat e saj**; faqja i
 grumbullon fjalët sipas rreshtit (y) dhe kolonës (x), prandaj tabela e skanuar del si
@@ -160,9 +161,8 @@ tabelë e vërtetë — jo si tekst i përzier. Çelësi vendoset **një herë p
 *Skano faturën → Lexim i fortë në internet → Ruaj çelësin* dhe ruhet vetëm në atë browser.
 
 - **Hapat hap pas hapi, kufizimi i çelësit, kuota, privatësia dhe gabimet:** [`UDHEZUES-OCR.md`](UDHEZUES-OCR.md)
-- **Provo çelësin** te kutiza e leximit të fortë — dërgon një imazh të vogël prove
-  (“REGJISTRI 12345”) dhe të thotë menjëherë në shqip nëse çelësi punon, ose çfarë mungon
-  (API e paaktivizuar, faturim, referrer, kuotë).
+- **Kur leximi në internet nuk kryhet**, faqja nuk mbetet bosh: kalon te Tesseract dhe e shënon
+  me një rresht të shkurtër (shkaku i detajuar jepet te dokumentet e mësipërme).
 - Pa çelës (ose me kutizën e fikur) **asgjë nuk del nga pajisja**: lexon Tesseract-i.
 - Nëse leximi i fortë dështon (internet, çelës, kuotë), faqja e thotë shkakun në shqip dhe
   kalon vetë te leximi brenda pajisjes — skanimi nuk mbetet bosh.
@@ -234,11 +234,13 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
 | `patch-supabase.py` | rikrijon `docs/index.html` nga prototipi, nëse ndryshon ndërfaqja |
 | `cakto-lidhjen.js` | ndryshon URL-në dhe çelësin te `docs/index.html` me një komandë |
 | `UDHEZUES-SUPABASE.md` | bazë e re në Supabase: hap pas hapi, kontrolle, gabimet dhe zgjidhjet |
-| `UDHEZUES-OCR.md` | leximi i fortë i faturave (Google Vision): çelësi, kuota, privatësia |
+| `UDHEZUES-OCR.md` | leximi i fortë me Google Vision: çelësi, faturimi, kuota, privatësia |
+| `SUPABASE-OCR.md` | leximi në server (Edge Function `ocr`): çelësi rri në Supabase, jo në pajisje |
+| `supabase/functions/ocr/index.ts` | kodi i funksionit `ocr` (foto → tekst, me Gemini) |
 | `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
 | `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
 | `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |
-| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur, plus leximi i fortë me Google Vision, prova e çelësit, çelësi i faqes dhe faqet e PDF-së së skanuar (29 prova, me 4 fatura reale — dy prej tyre skanime) |
+| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur, plus leximi i fortë me Google Vision, leximi në server, çelësi i faqes dhe faqet e PDF-së së skanuar (28 prova, me 4 fatura reale — dy prej tyre skanime) |
 | `tests/fixtures/fature-bills.txt` | tekst i një PDF-je të vërtetë fiskale (identifikuesit e zëvendësuar) |
 | `tests/live.test.js` | provë e vërtetë kundër projektit (7 prova) — `SUPABASE_URL=… SUPABASE_KEY=… node tests/live.test.js` |
 | `tests/staf.test.js` | provë me dy “pajisje” kundër bazës reale (17 prova) |
