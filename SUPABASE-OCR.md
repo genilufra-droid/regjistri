@@ -132,7 +132,7 @@ Sipas kërkesës “hiqi shënimet, lëre vetëm skano faturën”:
 
 | Çfarë shfaqet | Shkaku | Zgjidhja |
 |---|---|---|
-| *“Shërbimi i leximit nuk është vendosur në server (404)”* | funksioni `ocr` s’është deployuar / emri ndryshe | hapi 3 (emri saktësisht `ocr`) |
+| *“Shërbimi i leximit nuk u gjet në server”* (404) | funksioni s’është deployuar, ose emri nuk përputhet | hapi 3 — emri saktësisht `ocr`. Faqja provon vetë edhe `scan-ocr`, `ocr-invoice`, `invoice-ocr`, `skaner`, `scan` dhe mban mend atë që përgjigjet; mund ta fiksosh edhe me `window.OCR_SLUG = 'emri-yt'` |
 | *“Serveri s’ka çelësin e leximit (GEMINI_API_KEY …)”* | sekreti mungon | hapi 2 |
 | *“Çelësi GEMINI_API_KEY nuk është i vlefshëm”* | çelës i gabuar/i fshirë | krijo çelës të re te AI Studio dhe përditëso sekretin |
 | *“Kuota e leximit u tejkalua për këtë moment”* | shumë kërkesa brenda minutës/ditës | prit pak ose përdor `gemini-2.5-flash` (më i lirë) |

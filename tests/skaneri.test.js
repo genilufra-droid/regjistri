@@ -260,7 +260,7 @@ const TESTS = `
     };
     try {
       window.OCR_SERVER = true;
-      A.ok(/nuk është vendosur në server/.test(await msgOf(404, 'not found')), '404');
+      A.ok(/nuk u gjet në server/.test(await msgOf(404, 'not found')), '404');
       A.ok(/GEMINI_API_KEY/.test(await msgOf(500, '{"error":"Mungon GEMINI_API_KEY …"}')), 'sekreti');
       A.ok(/Kuota/.test(await msgOf(429, 'quota')), 'kuota');
     } finally { global.fetch = realFetch; window.OCR_SERVER = false; }
@@ -280,12 +280,37 @@ const TESTS = `
       const txt = await scanReadImage(new Blob([new Uint8Array([7])], { type: 'image/jpeg' }));
       A.strictEqual(step, 'vision', 'nuk kalohet te Vision pas serverit: ' + step);
       A.strictEqual(SCAN.reader, 'vision');
-      A.ok(/nuk është vendosur në server/.test(SCAN.serverErr || ''), 'gabimi i serverit: ' + SCAN.serverErr);
+      A.ok(/nuk u gjet në server/.test(SCAN.serverErr || ''), 'gabimi i serverit: ' + SCAN.serverErr);
       A.ok(/VISION TEKST/.test(txt), txt);
     } finally {
       global.fetch = realFetch;
       global.window.Tesseract = realT;
       setVisionKey(''); setVisionOn(false); window.OCR_SERVER = false;
+    }
+  });
+
+  await T('Emri i funksionit zbulohet vetë (ocr -> invoice-ocr) dhe mbahet mend', async () => {
+    const realFetch = global.fetch;
+    const tried = [];
+    global.fetch = async (url, opt) => {
+      tried.push(url);
+      if (opt && opt.method === 'POST') {
+        return { ok: true, status: 200, async text() { return JSON.stringify({ text: 'FURNITOR QR 9 12345' }); } };
+      }
+      if (url.indexOf('invoice-ocr') > -1) return { ok: true, status: 401, async text() { return '{}'; } };
+      return { ok: false, status: 404, async text() { return 'Function not found'; } };
+    };
+    try {
+      __mem.removeItem('regjistri.ocr.slug');
+      window.OCR_SERVER = true;
+      const txt = await ocrReadServer(new Blob([new Uint8Array([1])], { type: 'image/jpeg' }));
+      A.ok(txt.indexOf('FURNITOR QR') === 0, 'teksti: ' + txt);
+      A.ok(tried.some(u => u.indexOf('invoice-ocr') > -1), 'nuk u provua emri alternativ');
+      A.strictEqual(__mem.getItem('regjistri.ocr.slug'), 'invoice-ocr', 'emri nuk u mbajt mend');
+    } finally {
+      global.fetch = realFetch;
+      window.OCR_SERVER = false;
+      __mem.removeItem('regjistri.ocr.slug');
     }
   });
 
