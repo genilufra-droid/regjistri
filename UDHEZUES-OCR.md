@@ -1,96 +1,148 @@
-# Udhëzues: leximi i fortë i faturave (Google Vision)
+# Udhëzues: leximi i fortë i faturave me Google Vision
 
-Skaneri i faqes tani ka dy motorë leximi:
+Skaneri ka dy motorë leximi. **Nuk je i detyruar ta bësh këtë** — pa çelës, faqja punon
+normalisht me Tesseract brenda telefonit.
 
 | Motori | Kur përdoret | Saktësia |
 |---|---|---|
-| **PDF me tekst** | gjithmonë i pari për PDF-të me tekst (bills.al, E-Fiskal…) | shumë e lartë — lexohet teksti origjinal |
-| **Google Vision** (lexim i fortë, në internet) | foto dhe PDF të skanuara, kur ka çelës | shumë e lartë, edhe për tabela të shtrembra |
-| **Tesseract** (brenda pajisjes) | pa çelës, ose kur leximi i fortë dështon | e mirë për fatura të qarta |
+| **PDF me tekst** | gjithmonë i pari për PDF-të me tekst (bills.al, E-Fiskal…) | shumë e lartë — teksti origjinal, pa OCR |
+| **Google Vision** | foto dhe PDF të skanuara, kur ka çelës | shumë e lartë, edhe për tabela të shtrembra e kode QR |
+| **Tesseract** (në pajisje) | pa çelës, ose kur leximi i fortë dështon | e mirë për fatura të qarta |
 
-Të gjitha rrugët e kalojnë tekstin te i njëjti lexues faturash: furnitori, numri, data,
-monedha, rreshtat (sasi × çmim) dhe totali. **Asgjë nuk ruhet vetë** — ti kontrollon dhe
-shtyp *Ruaj faturën*.
+Kohë: **10–12 minuta**. Kosto: **0 €** për deri në **1.000 faqe në muaj** (kuota falas
+përsëritet çdo muaj). Duhet një llogari Google dhe një kartë (vetëm për verifikim — nuk
+faturohesh brenda kuotës).
+
+> **Rendi ka rëndësi:** pa **faturimin e aktivizuar**, Google e kthen çelësin me gabim
+> 403 edhe pse API-ja duket “e aktivizuar”. Prandaj Hapi 3 nuk anashkalohet.
 
 ---
 
-## 1. Merr çelësin (5 minuta, falas)
+## Hapi 1 — Krijo projektin (2 minuta)
 
-1. Hap <https://console.cloud.google.com/> dhe hyr me llogarinë e Google-it të punës.
-2. Në krye, **Select a project → New project** → emri `regjistri-blerjeve` → **Create**.
-3. **APIs & Services → Library** → kërko **Cloud Vision API** → **Enable**.
-   *(Nëse Google të kërkon faturimin: kartela lidhet vetëm një herë; kuota falas prej
-   1.000 faqesh në muaj nuk faturohet.)*
-4. **APIs & Services → Credentials → + Create credentials → API key**.
-   Kopjo çelësin që fillon me `AIza…`.
+1. Hap <https://console.cloud.google.com/> me llogarinë Google të punës.
+2. Në shiritin e sipërm shtyp kutinë e projektit (**Select a project**) → **New project**.
+3. **Project name:** `regjistri-blerjeve` → **Create** → prit 20 sekonda → zgjidhe nga e
+   njëjta listë (lart duhet të shkruajë `regjistri-blerjeve`).
 
-## 2. Kufizoje çelësin (mos e anashkalo)
+## Hapi 2 — Aktivizo Cloud Vision API (1 minutë)
 
-Në **Credentials → (çelësi yt) → Edit**:
+1. Menyja ☰ → **APIs & Services → Library**.
+2. Kërko `Cloud Vision` → zgjidh **Cloud Vision API** (jo “Vision AI” / jo “Document AI”).
+3. **Enable** → prit derisa butoni të bëhet **Manage**.
 
-- **Application restrictions** → **HTTP referrers (web sites)** → shto:
-  - `https://genilufra-droid.github.io/*`
-  - `http://localhost/*` *(vetëm nëse e provon faqen në kompjuter)*
-- **API restrictions** → **Restrict key** → zgjidh vetëm **Cloud Vision API** → **Save**.
+## Hapi 3 — Aktivizo faturimin (2 minuta, i detyrueshëm)
 
-Kështu, edhe pse çelësi shihet në faqe, askush tjetër nuk mund ta përdorë nga një sajt tjetër.
-Nëse ndonjëherë dyshon, krijo çelës të re dhe fshij të vjetrin (**Delete**).
+1. Menyja ☰ → **Billing** → **Link a billing account** / **Create billing account**.
+2. Plotëso: shtet (Shqipëri), emër, kartë (Visa/Mastercard). Ndryshimi i kartës bëhet vetëm
+   një herë; faqja e Google-it nuk e ruan nga ana e regjistrit.
+3. **Kthehu te projekti** dhe sigurohu që në krye shkruan emrin e projektit, jo të llogarisë.
 
-## 3. Vendose në faqe
+### Kufi sigurie (30 sekonda — bëje patjetër)
 
-1. Hap faqen → **Blerjet** → **📷 Skano faturën**.
+1. ☰ → **Billing → Budgets & alerts → Create budget**.
+2. **Name:** `kufi-vision` · **Budget amount:** `1` EUR · **Next**.
+3. Tek alerts vendos 50% / 90% / 100% → **Finish**.
+
+Kështu, edhe sikur diçka shkoj keq, nuk shpenzon më shumë se 1 € pa të ardhur njoftimi.
+(Për 100 fatura në muaj, shpenzimi real është **0 €** — brenda kuotës falas.)
+
+## Hapi 4 — Krijo çelësin (1 minutë)
+
+1. ☰ → **APIs & Services → Credentials**.
+2. Lart: **+ Create credentials → API key**.
+3. Kopjo çelësin që shfaqet (fillon me `AIza…`, ~39 shkronja) → **Close**.
+
+> Mos zgjidh “Service account”, “OAuth client ID” apo “API key (legacy)” — vetëm **API key**.
+
+## Hapi 5 — Kufizo çelësin (1 minutë, i rëndësishëm)
+
+Shtyp **Edit** mbi çelësin e krijuar:
+
+1. **Application restrictions** → zgjidh **Websites (HTTP referrers)** → **Add**:
+   ```
+   https://genilufra-droid.github.io/*
+   ```
+   *(opsionale, për prova në kompjuter: `http://localhost/*`)*
+2. **API restrictions** → **Restrict key** → shëno vetëm **Cloud Vision API**.
+3. **Save** → prit 1–2 minuta që kufizimi të hyjë në fuqi.
+
+Pa këtë hap, çelësi punon edhe po ta marrë dikush tjetër; me këtë hap, punon **vetëm** nga
+faqja jote.
+
+## Hapi 6 — Vendose në faqe (1 minutë)
+
+1. Hap <https://genilufra-droid.github.io/regjistri/> → **Blerjet** → **📷 Skano faturën**.
 2. Hap kutinë **“Lexim i fortë në internet (Google Vision)”**.
-3. Ngjit çelësin → **Ruaj çelësin**.
-   Shfaqet “✓ Leximi i fortë është gati për këtë pajisje.”
-4. Lëre të shtypur **“Përdor leximin e fortë kur ka çelës e internet”**.
+3. Ngjit çelësin → **Ruaj çelësin** → shfaqet *“✓ Leximi i fortë është gati për këtë pajisje.”*
+4. Shtyp **Provo çelësin** ← **prova më e shpejtë**:
+   - **✓ Çelësi punon: Google Vision lexoi testin (“REGJISTRI 12345”).** → gati.
+   - **✗ …** → shih tabelën e gabimeve më poshtë; mesazhi e thotë shkakun në shqip.
+   *(Prova harxhon 1 njësi nga kuota — mjafton ta bësh një herë.)*
+5. Lëre të shtypur **“Përdor leximin e fortë kur ka çelës e internet”**.
 
-Çelësi ruhet **vetëm në këtë pajisje/browser** (localStorage), jo në bazë. Për ta hequr:
-**Fshi çelësin**. Për çdo pajisje tjetër (telefon, kompjuter i zyrës) bëje të njëjtën gjë një herë.
+Çelësi ruhet **vetëm në atë pajisje/browser** (localStorage), jo në bazë. Për çdo pajisje
+tjetër (telefoni i dyqanit, kompjuteri i zyrës) përsërit hapin 6 një herë.
 
-## 4. Provo
+## Hapi 7 — Prova me faturë të vërtetë (2 minuta)
 
-Skano një faturë foto. Nën “U lexua — kontrollo dhe plotëso” duhet të shohësh:
+1. **Skano faturën** → zgjidh `BIOBES OCT.pdf` (ose një foto të faturës).
+2. Nën “U lexua — kontrollo dhe plotëso” duhet të shkruajë:
+   > U lexua me **Google Vision** (lexim i fortë në internet).
+3. Kontrollo: furnitori `ARK HOTEL`, nr. `110514`, data `31.10.2026`, monedha Euro, totali `80`.
+4. **Plotëso faturën** → **Ruaj faturën**.
 
-> U lexua me **Google Vision** (lexim i fortë në internet).
+Nëse del “brenda pajisjes (Tesseract)” ose një shirit “Leximi i fortë s’u krye: …”, shkaku
+është në tabelën e gabimeve — faqja nuk mbetet pa lexim, thjesht përdor motorin rezervë.
 
-Nëse shfaqet “Leximi i fortë s’u krye: …” dhe pastaj “brenda pajisjes (Tesseract)”,
-shih tabelën më poshtë — faqja nuk mbetet pa lexim, thjesht përdor motorin rezervë.
+---
 
-## 5. Kuota dhe kostoja
+## Kuota dhe kostoja
 
 | Zëri | Vlera |
 |---|---|
-| Falas çdo muaj | **1.000 faqe** (njësi) për *Document Text Detection* |
-| Mbi kuotën | rreth **1,5 $ / 1.000 faqe** (Google mund ta ndryshojë çmimin) |
-| Faturime të papritura | kufizo kuotën: **APIs & Services → Cloud Vision API → Quotas** → *Requests per day* = 40 |
+| Falas çdo muaj | **1.000 njësi** (faqe) për *Document Text Detection*; përsëritet çdo muaj |
+| Mbi kuotën | rreth **1,5 $ / 1.000 faqe** |
+| Sa harxhon një faturë | **1 njësi** (një kërkesë, një veçori) |
+| 100 fatura në muaj | **0 €** |
+| Kufi i rekomanduar | budget alert 1 € (Hapi 3) ose *Quotas → Requests per day = 40* |
 
-Për një dyqan me 50–100 fatura në muaj, kuota falas mbulon gjithçka.
-
-## 6. Privatësia
+## Privatësia
 
 - Fotografia i dërgohet Google-it **vetëm** kur përdoret leximi i fortë.
-- Pa çelës ose me kutizën e fikur, gjithçka lexohet **brenda pajisjes** — nuk del asnjë bajt.
-- Skedari i faturës ruhet te faturat (Supabase Storage) vetëm kur ti shtyp *Ruaj faturën*.
-- Nëse nuk do që çelësi të jetë fare në faqe, alternativa është një *Edge Function* në Supabase
-  që e mban çelësin në sekret dhe i shërben faqes si përfaqësues (proxies). Kërkoje kur ta
-  vendosim bazën e re.
+- Pa çelës, ose me kutizën e fikur, gjithçka lexohet **brenda pajisjes** — nuk del asnjë bajt.
+- Skedari i faturës ruhet te Supabase (bucket-i `fatura`) vetëm kur ti shtyp *Ruaj faturën*.
+- Faqja nuk ruan tekstin e faturës askund tjetër; çelësi rri vetëm në pajisje.
 
-## 7. Kur diçka nuk shkon
+## Kur diçka nuk shkon
 
-| Mesazhi në faqe | Shkaku | Zgjidhja |
+| Mesazhi në faqe | Shkaku i vërtetë | Zgjidhja |
 |---|---|---|
-| “Çelësi i Google Vision nuk është i vlefshëm…” | çelës i gabuar / i fshirë | krijo çelës të re te Credentials dhe ruaje sërish |
-| “API-ja Cloud Vision s’është aktivizuar…” | projekti s’e ka të aktivizuar API-në | Library → Cloud Vision API → Enable |
-| “Google-i e refuzoi çelësin (403)…” | kufizimi me referrer nuk e përfshin këtë adresë | shto `https://genilufra-droid.github.io/*` te HTTP referrers |
-| “Kuota mujore e leximit u tejkalua…” | mbi 1.000 faqe në muaj | prit muajin tjetër ose hiq kufizimin e kuotës |
-| “Fotografia nuk u pranua nga Google-i (400)…” | skedar i dëmtuar / shumë i madh | bëj një foto tjetër (JPG/PNG) |
-| “Nuk u arrit shërbimi i leximit (internet?)” | internet i dobët | provo sërish; faqja kalon vetë te Tesseract |
-| “Ky nuk duket çelës i Google-it…” | u ngjit diçka tjetër | çelësat e Google-it fillojnë me `AIza` |
+| “Çelësi i Google Vision nuk është i vlefshëm…” (`API key not valid`) | çelës i gabuar, i fshirë ose i kopjuar pjesërisht | Credentials → kopjo sërish çelësin e plotë (`AIza…`) → Ruaj → Provo |
+| “API-ja Cloud Vision s’është aktivizuar…” (`SERVICE_DISABLED`) | projekti s’e ka API-në të aktivizuar | Library → Cloud Vision API → **Enable** |
+| “Projekti i Google-it kërkon faturimin e aktivizuar…” | **pa faturim** — gabimi më i shpeshtë | Billing → link a billing account (Hapi 3) |
+| “Google-i e refuzoi çelësin (403)…” | kufizimi me referrer nuk e njeh faqen | Credentials → Edit → HTTP referrers → shto `https://genilufra-droid.github.io/*` (prit 1–2 min) |
+| “Kuota mujore e leximit u tejkalua…” (429) | 1.000 faqe u harxhuan ose *Requests per day* i ulët | prit muajin tjetër ose rrit kuotën te **Quotas** |
+| “Fotografia nuk u pranua nga Google-i (400)…” | skedar i dëmtuar / shumë i madh / format i panjohur | bëj një foto të re JPG ose PNG |
+| “Nuk u arrit shërbimi i leximit (internet?)” | internet i dobët ose bllokues | provo sërish; faqja kalon vetë te Tesseract |
+| “Ky nuk duket çelës i Google-it…” (kur ruaj) | u ngjit diçka tjetër | çelësat e Google-it fillojnë me `AIza`; kopjo nga *Credentials* |
+| Asnjë gabim, por gjithmonë “brenda pajisjes” | kutiza *Përdor leximin e fortë* e fikur ose çelësi i fshirë | hap kutizën dhe **Ruaj çelësin** sërish |
 
-## 8. Si punon (për kureshtarë)
+**Nëse nuk je i sigurt ku je:** në krye të console.cloud.google.com duhet të shkruajë
+`regjistri-blerjeve`. Shumica e gabimeve vijnë nga projekti tjetër i zgjedhur.
+
+## Si punon (për kureshtarë)
 
 Google Vision kthen **çdo fjalë me koordinatat e saj**. Faqja i grumbullon fjalët sipas
-y-së (i njëjti rresht) dhe i radhit sipas x-së — kështu kolonat e një tabele të skanuar
+y-së (i njëjti rresht) dhe i radhit sipas x-së, kështu kolonat e një tabele të skanuar
 (artikull · sasi · çmim · total) mbeten në **një rresht** edhe pse shërbimi i kthen si
 blloqe të veçanta. Nga aty, i njëjti lexues që përdoret për PDF-të provon aritmetikën
-`sasi × çmim = total`, `neto + TVSH = bruto` dhe nxjerr totalin e faturës në monedhën e saj.
+`sasi × çmim = total` dhe nxjerr totalin në monedhën e faturës (jo në Lekë nga kursi).
+
+## Alternativa: çelësi të mos jetë fare në faqe
+
+Sot çelësi rri në browserin e pajisjes. Nëse do që as ai të mos shihet (dhe të mos
+përsëritet për çdo telefon), mund të vendoset një **Edge Function** në Supabase që e mban
+çelësin si *secret* në server dhe i shërben faqes si përfaqësues (proxy). Kërkoje kur të duash
+dhe e ndërtoj: ndryshimi për ty bëhet vetëm një herë te *Supabase → Edge Functions → Secrets*
+(`GOOGLE_VISION_KEY`), pa ngjitur çelës në asnjë pajisje.

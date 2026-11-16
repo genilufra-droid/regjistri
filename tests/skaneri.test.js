@@ -458,6 +458,48 @@ const TESTS = `
     } finally { global.fetch = realFetch; global.window.Tesseract = realT; setVisionKey(''); }
   });
 
+  await T('“Provo çelësin”: imazhi i provës shkon te Vision dhe testohet 12345', async () => {
+    const realFetch = global.fetch;
+    let sent = null;
+    global.fetch = async (url, opt) => {
+      sent = JSON.parse(opt.body);
+      return { ok: true, status: 200, async text() { return JSON.stringify({ responses: [{ fullTextAnnotation: {
+        text: 'REGJISTRI 12345',
+        pages: [{ blocks: [{ paragraphs: [{ words: [
+          word('REGJISTRI', 20, 50, 120), word('12345', 160, 50, 70)
+        ] }] }] }] } }] }); } };
+    };
+    const msg = () => document.getElementById('scanKeyMsg').textContent;
+    try {
+      setVisionKey('');
+      await scanTestKey();
+      A.ok(/Shkruaj çelësin/.test(msg()), 'pa çelës: ' + msg());
+
+      setVisionKey(KEY);
+      await scanTestKey();
+      A.ok(/^✓/.test(msg()), 'me çelës: ' + msg());
+      A.ok(/12345/.test(msg()), 'nuk u raportua testi: ' + msg());
+      const b64 = sent.requests[0].image.content;
+      A.ok(b64.length > 1000, 'imazhi i provës nuk u dërgua (' + b64.length + ')');
+      /* PNG i vërtetë: fillon me 0x89 'P' 'N' 'G' */
+      const head = atob(b64).slice(0, 4).split('').map(c => c.charCodeAt(0));
+      A.deepStrictEqual(head, [137, 80, 78, 71], 'nuk është PNG i vlefshëm');
+    } finally { global.fetch = realFetch; setVisionKey(''); }
+  });
+
+  await T('“Provo çelësin” me çelës të gabuar → ✗ me shpjegim', async () => {
+    const realFetch = global.fetch;
+    global.fetch = async () => ({ ok: false, status: 403, async text() {
+      return JSON.stringify({ error: { code: 403, message: 'API key not valid' } }); } });
+    try {
+      setVisionKey(KEY);
+      await scanTestKey();
+      const m = document.getElementById('scanKeyMsg').textContent;
+      A.ok(/^✗/.test(m), 'nuk u shënua gabim: ' + m);
+      A.ok(/nuk është i vlefshëm/.test(m), 'pa shpjegim: ' + m);
+    } finally { global.fetch = realFetch; setVisionKey(''); }
+  });
+
   await T('Paneli i skanerit tregon kur leximi i fortë është gati', async () => {
     scanOpen();
     A.ok(/brenda pajisjes/i.test(document.getElementById('scanStrongState').textContent), 'pa çelës: ' + document.getElementById('scanStrongState').textContent);
