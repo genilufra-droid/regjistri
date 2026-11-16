@@ -1,7 +1,11 @@
 # Udhëzues: leximi i fortë i faturave me Google Vision
 
-Skaneri ka dy motorë leximi. **Nuk je i detyruar ta bësh këtë** — pa çelës, faqja punon
-normalisht me Tesseract brenda telefonit.
+> **Gjendja: çelësi është i vendosur në faqe.** Leximi i fortë punon automatikisht në çdo
+> pajisje; hapat 1–6 poshtë i ke bërë tashmë. **Të mbetura për ty: Hapi 5 (kufizimi i
+> çelësit) nëse s’e ke bërë, dhe Hapi 7 (prova me një faturë).** Hapat 1–4 mbeten këtu si
+> referencë (p.sh. kur krijohet çelës i re).
+
+Skaneri ka dy motorë leximi: leximin e fortë (Google Vision) dhe Tesseract brenda pajisjes.
 
 | Motori | Kur përdoret | Saktësia |
 |---|---|---|
@@ -70,7 +74,11 @@ Shtyp **Edit** mbi çelësin e krijuar:
 Pa këtë hap, çelësi punon edhe po ta marrë dikush tjetër; me këtë hap, punon **vetëm** nga
 faqja jote.
 
-## Hapi 6 — Vendose në faqe (1 minutë)
+## Hapi 6 — Vendose në faqe (✅ kryer: çelësi është në faqe)
+
+Çelësi është në `docs/index.html` si `window.GOOGLE_VISION_KEY`, prandaj çdo pajisje e përdor
+pa konfigurim. Hapat poshtë janë për rastin kur do një çelës **tëndin** në një pajisje të
+veçantë, ose do ta fikësh leximin e fortë atje.
 
 1. Hap <https://genilufra-droid.github.io/regjistri/> → **Blerjet** → **📷 Skano faturën**.
 2. Hap kutinë **“Lexim i fortë në internet (Google Vision)”**.
@@ -81,8 +89,10 @@ faqja jote.
    *(Prova harxhon 1 njësi nga kuota — mjafton ta bësh një herë.)*
 5. Lëre të shtypur **“Përdor leximin e fortë kur ka çelës e internet”**.
 
-Çelësi ruhet **vetëm në atë pajisje/browser** (localStorage), jo në bazë. Për çdo pajisje
-tjetër (telefoni i dyqanit, kompjuteri i zyrës) përsërit hapin 6 një herë.
+Çelësi i futur kështu ruan **vetëm në atë pajisje/browser** (localStorage) dhe zëvendëson
+çelësin e faqes. **Fshi çelësin** e fik leximin e fortë vetëm për atë pajisje (kthehet te
+Tesseract); për t’u kthyer te çelësi i faqes, fshij edhe një herë të dhënat e faqes ose
+vendos çelësin e faqes me “Ruaj çelësin”.
 
 ## Hapi 7 — Prova me faturë të vërtetë (2 minuta)
 

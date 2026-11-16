@@ -16,6 +16,11 @@
 <script>
   window.SUPABASE_URL      = 'https://vikcvnioouxnchwrnahk.supabase.co';
   window.SUPABASE_ANON_KEY = 'sb_publishable_WY0dvvMh-ZBdpSwEXMN8JQ_I5iyTZmN';
+  /* Çelësi i leximit të fortë (Google Vision). Publik si edhe ai i Supabase-it, por
+     DUHET i kufizuar te kjo faqe: Google Cloud → Credentials → key → HTTP referrers
+     = https://genilufra-droid.github.io/* dhe API restrictions = vetëm Cloud Vision API.
+     Pa kufizim, kush e sheh faqen mund ta përdorë çelësin për llogari të vet. */
+  window.GOOGLE_VISION_KEY = 'AIzaSyA3XqMzby3NtuxIGpkopUkv7BFhnugAsYk';
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
@@ -1785,13 +1790,27 @@ const VISION = {
   url: 'https://vision.googleapis.com/v1/images:annotate',
   maxSide: 2600                   /* pikselët më të mëdhenj që dërgohen */
 };
+/* Çelësi vjen nga koka e faqes (i përbashkët për të gjithë), por secila pajisje
+   mund të vendosë një çelës të vetin — ose ta fikë fare (sentinel “__none__”). */
+const VISION_OFF = '__none__';
+function visionDefaultKey() { return String((window && window.GOOGLE_VISION_KEY) || '').trim(); }
 function visionKey() {
-  try { return String((LS && LS.getItem(VISION.lsKey)) || '').trim(); } catch (e) { return ''; }
+  let saved = '';
+  try { saved = String((LS && LS.getItem(VISION.lsKey)) || '').trim(); } catch (e) {}
+  if (saved === VISION_OFF) return '';
+  return saved || visionDefaultKey();
+}
+function visionKeySource() {          /* 'saved' | 'off' | 'default' | 'none' */
+  let saved = '';
+  try { saved = String((LS && LS.getItem(VISION.lsKey)) || '').trim(); } catch (e) {}
+  if (saved === VISION_OFF) return 'off';
+  if (saved) return 'saved';
+  return visionDefaultKey() ? 'default' : 'none';
 }
 function setVisionKey(k) {
   try {
     const v = String(k || '').trim();
-    if (v) LS.setItem(VISION.lsKey, v); else LS.removeItem(VISION.lsKey);
+    if (v) LS.setItem(VISION.lsKey, v); else LS.setItem(VISION.lsKey, VISION_OFF);
     return true;
   } catch (e) { return false; }
 }
@@ -1955,9 +1974,12 @@ function scanStrongUI() {
   }
   if (chk) chk.checked = visionOn();
   const box = $('#scanStrongState');
-  if (box) box.textContent = saved
-    ? '✓ Leximi i fortë është gati për këtë pajisje.'
-    : 'Pa çelës, fotot lexohen brenda pajisjes (Tesseract) — mjafton për fatura të qarta.';
+  const src = visionKeySource();
+  if (box) box.textContent = src === 'saved'
+    ? '✓ Leximi i fortë është gati për këtë pajisje (çelës i veçantë).'
+    : src === 'default'
+      ? '✓ Leximi i fortë është gati me çelësin e faqes.'
+      : 'Fotot lexohen brenda pajisjes (Tesseract) — mjafton për fatura të qarta. Për më shumë saktësi, fute çelësin tënd më poshtë.';
 }
 let SCAN_UI_BOUND = false;
 function scanStrongBind() {
@@ -1988,9 +2010,14 @@ function scanSaveKey() {
   toast('Çelësi u ruajt vetëm në këtë pajisje');
 }
 function scanDelKey() {
+  const hadOwn = visionKeySource() === 'saved';
   setVisionKey('');
+  setVisionOn(false);
+  const chk = $('#scanStrongOn'); if (chk) chk.checked = false;
   scanStrongUI();
-  toast('Çelësi u fshi nga kjo pajisje');
+  toast(hadOwn
+    ? 'Çelësi yt u fshi; kjo pajisje s’përdor më leximin e fortë'
+    : 'Leximi i fortë u fik për këtë pajisje');
 }
 
 /* ---- prova e çelësit: një imazh i vogël me tekst kalon nëpër Google Vision ----
