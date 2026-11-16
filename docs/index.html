@@ -1997,9 +1997,37 @@ function scanOpen() {
    i cili e mban çelësin e leximit si *secret* në server. Kështu asnjë pajisje nuk
    pyetet për çelës dhe çelësi nuk shihet në faqe. */
 const OCR_FN = 'ocr';
+const OCR_FN_CANDIDATES = ['ocr', 'scan-ocr', 'ocr-invoice', 'invoice-ocr', 'skaner', 'scan'];
+const OCR_SLUG_LS = 'regjistri.ocr.slug';
+/* Emri i funksionit në Supabase mund të jetë i ndryshëm nga `ocr`. Provohen disa
+   emra një herë (GET i lirë: 404 = s'ekziston, 401/405 = ekziston) dhe emri që
+   përgjigjet mbahet mend në këtë pajisje. */
+function ocrSlug() {
+  const fixed = String((window && window.OCR_SLUG) || '').trim();
+  if (fixed) return fixed;
+  try { const saved = (LS && LS.getItem(OCR_SLUG_LS)) || ''; if (saved) return saved; } catch (e) {}
+  return OCR_FN;
+}
+async function ocrResolveSlug() {
+  const fixed = String((window && window.OCR_SLUG) || '').trim();
+  if (fixed) return fixed;
+  try { const saved = (LS && LS.getItem(OCR_SLUG_LS)) || ''; if (saved) return saved; } catch (e) {}
+  const base = String(CFG.url || '').replace(/\/+$/, '');
+  if (!base) return OCR_FN;
+  for (const slug of OCR_FN_CANDIDATES) {
+    try {
+      const r = await fetch(base + '/functions/v1/' + slug, { method: 'GET' });
+      if (r.status !== 404) {
+        try { LS && LS.setItem(OCR_SLUG_LS, slug); } catch (e) {}
+        return slug;
+      }
+    } catch (e) { return OCR_FN; }              // pa internet: provo direkt
+  }
+  return OCR_FN;
+}
 function ocrServerError(status, body) {
   const b = String(body || '');
-  if (status === 404) return 'Shërbimi i leximit nuk është vendosur në server (404).';
+  if (status === 404) return 'Shërbimi i leximit nuk u gjet në server — kontrollo emrin e funksionit te Supabase → Edge Functions.';
   if (status === 401 || status === 403) return 'Serveri nuk e pranoi kërkesën (çelësi i faqes ose leja e funksionit).';
   if (status === 429) return 'Kuota e leximit u tejkalua për këtë moment.';
   if (/GEMINI_API_KEY|api key|API key/i.test(b)) return 'Serveri s’ka çelësin e leximit (GEMINI_API_KEY te Supabase → Secrets).';
@@ -2008,7 +2036,7 @@ function ocrServerError(status, body) {
 async function ocrReadServer(blob) {
   if (!CFG.url) throw new Error('S’ka lidhje me bazën për shërbimin e leximit.');
   const b64 = await visionImage(blob);                  // zvogëlim + base64
-  const url = String(CFG.url).replace(/\/+$/, '') + '/functions/v1/' + OCR_FN;
+  const url = String(CFG.url).replace(/\/+$/, '') + '/functions/v1/' + await ocrResolveSlug();
   const headers = { 'Content-Type': 'application/json' };
   if (CFG.key) { headers.apikey = CFG.key; headers.Authorization = 'Bearer ' + CFG.key; }
   scanProg('Po lexohet në server…', 0.5);
@@ -2250,7 +2278,13 @@ function parseInvoice(raw, knownSuppliers) {
   }
   let date = null;
   const labelRx = /(?:data|dat[ëe]|date|lëshuar|leshuar|issued)[^\d\n]{0,12}(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}|20\d{2}-\d{1,2}-\d{1,2})/i;
-  const labeled = joined.match(labelRx) || joined.replace(/(\d)\s+(?=\d)/g, '$1').match(labelRx);
+  /* “Data dhe ora e lëshimit të faturës: 05.11.2026” (fiskalizimi) nuk është data e
+     faturës kur diku tjetër shkruan “Data 31/10/2026”. Prandaj hiqet në provën e parë. */
+  const noStamp = joined.replace(/data\s+dhe\s+ora[^\n]{0,60}/gi, ' ')
+    .replace(/ora\s+e\s+l[eë]shimit[^\n]{0,60}/gi, ' ')
+    .replace(/fiskalizim[^\n]{0,60}/gi, ' ');
+  const labeled = noStamp.match(labelRx) || joined.match(labelRx) ||
+    noStamp.replace(/(\d)\s+(?=\d)/g, '$1').match(labelRx);
   if (labeled) {
     const v = labeled[1];
     const iso = v.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})$/);
@@ -2258,7 +2292,7 @@ function parseInvoice(raw, knownSuppliers) {
     if (iso) date = iso[1] + '-' + String(+iso[2]).padStart(2, '0') + '-' + String(+iso[3]).padStart(2, '0');
     else if (dmy) date = dmyToIso(dmy[1], dmy[2], dmy[3]);
   }
-  if (!date) date = findDate(lines.slice(0, 8).join(' '), false);        // koka e faturës
+  if (!date) date = findDate(noStamp.split('\n').slice(0, 8).join(' '), false);   // koka e faturës
   if (!date) date = findDate(lines.slice(0, 8).join(' '), true);
   if (!date) date = findDate(flat.replace(/afati[^\n]{0,30}/gi, ' '), false);
   if (!date) date = findDate(flat.replace(/afati[^\n]{0,30}/gi, ' '), true);
@@ -2473,7 +2507,7 @@ function parseInvoice(raw, knownSuppliers) {
   let rowsGuessed = false;
   if (!rows.length && totalLine != null && totalLine > 0) {
     const item = nameGuess || lines.find(l => /[A-Za-zËëÇç]{4}/.test(l) &&
-      !/fatur|invoice|\bdat[aëe]\b|\bora\b|total|tvsh|nipt|nivf|\bns\b|operator|banka|iban|kursi|monedha|pages|adres|shit[eë]s|bler[eë]s|telefon|kodi|\bqr\b|fiskal|sh[eë]nim|gjithsej|njesia|sasia|cmimi|çmimi/i.test(l));
+      !/fatur|invoice|\bdat[aëe]\b|\bora\b|total|tvsh|nipt|nivf|\bns\b|operator|banka|iban|kursi|monedha|pages|adres|shit[eë]s|bler[eë]s|telefon|kodi|\bqr\b|fiskal|sh[eë]nim|gjithsej|njesia|sasia|cmimi|çmimi|identifikim|personit|tatuesh|tatimore|numri|numër|statusi/i.test(l));
     rows.push({ product: (item || 'Sipas faturës').slice(0, 80), qty: '1', unit: 'copë', price: String(round2(totalLine)) });
     rowsGuessed = true;
   }
