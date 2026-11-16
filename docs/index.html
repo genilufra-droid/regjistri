@@ -23,7 +23,7 @@
   window.GOOGLE_VISION_KEY = 'AIzaSyA3XqMzby3NtuxIGpkopUkv7BFhnugAsYk';
   /* Leximi në server: Edge Function `ocr` në Supabase (çelësi rri si secret,
      jo në faqe). Ndezur me true pasi funksioni të vendoset — shih SUPABASE-OCR.md. */
-  window.OCR_SERVER = false;
+  window.OCR_SERVER = true;
 </script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <style>
@@ -2524,7 +2524,10 @@ function renderScanRes(p) {
       server: 'U lexua me shërbimin e leximit në server.',
       vision: 'U lexua me Google Vision.',
       pdf: 'Teksti u mor drejt nga PDF-ja.',
-      device: 'U lexua brenda pajisjes' + (SCAN.serverErr || SCAN.strongErr ? ' (leximi në internet nuk u krye)' : '') + '.'
+      device: (() => {
+        const why = String(SCAN.serverErr || SCAN.strongErr || '').split('(')[0].trim();
+        return 'U lexua brenda pajisjes' + (why ? ' — ' + why.slice(0, 90) : '') + '.';
+      })()
     }[SCAN.reader] || ''}</p>` : ''}
     ${dl}
     <div class="grid2">

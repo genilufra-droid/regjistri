@@ -57,6 +57,20 @@ supabase functions deploy ocr --project-ref vikcvnioouxnchwrnahk
 > (`apikey`), i cili mjafton për verifikim. Nëse e lë `--no-verify-jwt`, funksioni hapet
 > për këdo — jo i rekomanduar.
 
+### 3b. Lëre funksionin të pranojë kërkesat e faqes (1 minutë)
+
+Funksioni i ri vjen me **“Verify JWT” të ndezur**, dhe faqja dërgon çelësin **publik**
+(`sb_publishable_…`), që nuk është JWT — prandaj përgjigjja do të ishte
+`401 Unauthorized`. Kontrolluar më 16.11.2026: `GET /functions/v1/ocr` kthen
+`{"code":"UNAUTHORIZED_NO_AUTH_HEADER"}`, pra funksioni ekziston, por kërkon autorizim.
+
+**Zgjidhja:** Supabase → **Edge Functions → ocr → Settings** → kalo **Verify JWT** në
+**OFF** (ose, me CLI, deploy me `--no-verify-jwt`) → **Save**.
+
+> Funksioni bëhet i hapur për këdo që e ka URL-në. Rreziku i vetëm është harxhimi i kuotës
+> falas të Gemini-t (jo faturë). Nëse do ta mbyllim, thuamë dhe i shtoj një kontroll
+> `apikey` + kufi kërkesash brenda funksionit.
+
 ### 4. Provoje funksionin (pa faqe)
 
 Supabase → **Edge Functions → ocr → Test** ose me `curl`:
@@ -72,15 +86,9 @@ curl -sS "https://vikcvnioouxnchwrnahk.supabase.co/functions/v1/ocr" \
 Pritshmëria: `{"text":"…fatura si tekst…"}`. Nëse del gabim, mesazhi është në shqip
 (p.sh. *“Mungon GEMINI_API_KEY …”*).
 
-### 5. Ndez në faqe
+### 5. Ndez në faqe (✅ kryer: `window.OCR_SERVER = true`)
 
-Te `docs/index.html` (rreshti pranë `GOOGLE_VISION_KEY`):
-
-```js
-window.OCR_SERVER = true;
-```
-
-Ose ma thuaj dhe e bëj unë commit-in. Nga ai moment faqja:
+Te `docs/index.html` rreshti është ndezur. Nga ai moment faqja:
 
 1. **PDF me tekst** → lexohet drejt (si më parë);
 2. **foto / PDF i skanuar** → shkon te funksioni `ocr` (Gemini në server);
@@ -128,5 +136,6 @@ Sipas kërkesës “hiqi shënimet, lëre vetëm skano faturën”:
 | *“Serveri s’ka çelësin e leximit (GEMINI_API_KEY …)”* | sekreti mungon | hapi 2 |
 | *“Çelësi GEMINI_API_KEY nuk është i vlefshëm”* | çelës i gabuar/i fshirë | krijo çelës të re te AI Studio dhe përditëso sekretin |
 | *“Kuota e leximit u tejkalua për këtë moment”* | shumë kërkesa brenda minutës/ditës | prit pak ose përdor `gemini-2.5-flash` (më i lirë) |
-| *“Serveri nuk e pranoi kërkesën (401/403)”* | funksioni kërkon JWT dhe faqja s’e dërgoi | kontrollo që faqja dërgon `apikey` + `Authorization` (e bën vetë) |
-| Gjithmonë “brenda pajisjes” | `window.OCR_SERVER` ende `false` | hapi 5 |
+| *“Serveri nuk e pranoi kërkesën (401/403)”* | funksioni ka **Verify JWT** të ndezur | Edge Functions → ocr → Settings → Verify JWT = **OFF** → Save (hapi 3b) |
+| “brenda pajisjes” + arsyeja | serveri dështoi; arsyeja shkruhet shkurt në vetë rreshtin e rezultatit | shih tabelën më sipër |
+| Funksioni kthen tekst, por fushat dalin keq | modeli lexoi, por formati i tabelës ndryshon | dërgo një foto të faturës dhe e rregulloj parserin |
