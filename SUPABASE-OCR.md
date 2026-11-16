@@ -71,6 +71,25 @@ Funksioni i ri vjen me **“Verify JWT” të ndezur**, dhe faqja dërgon çelë
 > falas të Gemini-t (jo faturë). Nëse do ta mbyllim, thuamë dhe i shtoj një kontroll
 > `apikey` + kufi kërkesash brenda funksionit.
 
+### 3c. Vetëkontroll me një link (pa harxhuar kuotë)
+
+Hap në shfletues (edhe në telefon):
+
+```
+https://vikcvnioouxnchwrnahk.supabase.co/functions/v1/ocr
+```
+
+Duhet të shfaqet diçka si:
+
+```json
+{"ok":true,"gati":true,"secret":"GEMINI_API_KEY ✓","model":"gemini-2.5-flash","perdor":"POST me …"}
+```
+
+- `gati: true` → funksioni është vendosur, është i hapur dhe çelësi ekziston. Gati për skanim.
+- `gati: false` → mungon sekreti → hapi 2.
+- `UNAUTHORIZED_NO_AUTH_HEADER` → **Verify JWT** ende i ndezur → hapi 3b.
+- `Requested function was not found` → funksioni nuk u vendos / emri ndryshe → hapi 3.
+
 ### 4. Provoje funksionin (pa faqe)
 
 Supabase → **Edge Functions → ocr → Test** ose me `curl`:
