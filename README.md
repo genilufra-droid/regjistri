@@ -172,6 +172,8 @@ tabelë e vërtetë — jo si tekst i përzier. Çelësi vendoset **një herë p
 - **Kolonat e PDF-së** rindërtohen sipas koordinatave (x, y): teksti i mbështjellë bashkohet,
   numri i prerë në dy rreshta (`141.666` + `667`) ribashkohet — prandaj rreshtat e
   `NJESIA · SASIA · CMIMI · VLERA PA TVSH · TVSH · VLERA ME TVSH` dalin si tabelë e vërtetë.
+- **PDF i skanuar me disa faqe** lexohet faqe për faqe (deri 3) — rreshtat e faqes së dytë
+  nuk humbin më.
 - **Rreshtat** njihen me aritmetikë: provohen `sasi × çmim = total`, `sasi × çmim = neto`
   dhe `neto + TVSH = bruto`. Kështu edhe një rresht me 5 numra (sasi, çmim, neto, TVSH, bruto)
   lexohet saktë; çmimi mbetet `0.375` e nuk bëhet `375`.
@@ -236,7 +238,7 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
 | `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
 | `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
 | `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |
-| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur, plus leximi i fortë me Google Vision, prova e çelësit dhe çelësi i faqes (28 prova, me 4 fatura reale — dy prej tyre skanime) |
+| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur, plus leximi i fortë me Google Vision, prova e çelësit, çelësi i faqes dhe faqet e PDF-së së skanuar (29 prova, me 4 fatura reale — dy prej tyre skanime) |
 | `tests/fixtures/fature-bills.txt` | tekst i një PDF-je të vërtetë fiskale (identifikuesit e zëvendësuar) |
 | `tests/live.test.js` | provë e vërtetë kundër projektit (7 prova) — `SUPABASE_URL=… SUPABASE_KEY=… node tests/live.test.js` |
 | `tests/staf.test.js` | provë me dy “pajisje” kundër bazës reale (17 prova) |
