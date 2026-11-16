@@ -423,6 +423,38 @@ const TESTS = `
     }
   });
 
+  await T('PDF i skanuar: faqet kthehen në foto (deri 3), jo vetëm e para', async () => {
+    const pages = [];
+    const doc = {
+      numPages: 4,                       // 4 faqe, por lexohen më së shumti 3
+      async getPage(i) {
+        pages.push(i);
+        return {
+          getViewport: ({ scale }) => ({ width: 600 * scale, height: 800 * scale }),
+          render: () => ({ promise: Promise.resolve() })
+        };
+      }
+    };
+    const realCreate = document.createElement;
+    let blobs = 0;
+    document.createElement = (tag) => {
+      if (String(tag).toLowerCase() !== 'canvas') return realCreate(tag);
+      return {
+        width: 0, height: 0, style: {},
+        getContext: () => ({}),
+        toBlob(cb) { blobs++; cb(new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' })); }
+      };
+    };
+    try {
+      const imgs = await scanPdfPagesForOcr(doc, 3);
+      A.deepStrictEqual(pages, [1, 2, 3], 'faqet e lexuara: ' + JSON.stringify(pages));
+      A.strictEqual(imgs.length, 3, 'fotot: ' + imgs.length);
+      A.strictEqual(blobs, 3);
+      const one = await scanPdfPagesForOcr({ numPages: 1, getPage: doc.getPage }, 3);
+      A.strictEqual(one.length, 1, 'një faqe duhet të japë një foto');
+    } finally { document.createElement = realCreate; }
+  });
+
   await T('Leximi i fortë: kolonat e tabelës ribashkohen në një rresht', async () => {
     const lines = ocrLinesFromAnnotation(VISION_ANN);
     A.strictEqual(lines.length, 5, 'rreshtat: ' + JSON.stringify(lines));
