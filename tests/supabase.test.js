@@ -59,6 +59,7 @@ function table(name) {
 function fire(tbl) { subs.filter(s => s.table === tbl).forEach(s => setTimeout(() => s.cb({ table: tbl }), 5)); }
 
 global.window = {
+  __skipBucketProbe: true,      // provat nuk shkojnë në rrjet
   SUPABASE_URL: 'https://demo-projekt.supabase.co',
   SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiJ9.test-key',
   scrollTo() {}, location: { href: 'https://biobes.github.io/regjistri/' }

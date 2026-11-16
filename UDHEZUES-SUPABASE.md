@@ -23,12 +23,20 @@ krijuar asgjë të re:
 | 1 | URL-ja përgjigjet | hap `https://vikcvnioouxnchwrnahk.supabase.co/rest/v1/meta?select=id&apikey=ÇELËSI` | `[{"id":"app"}]` |
 | 2 | tabelat | `…/rest/v1/purchases?select=id&limit=1&apikey=ÇELËSI` | listë (edhe bosh) — **jo** `relation … does not exist` |
 | 3 | faqja | hap faqen → **Provo lidhjen** | **Online · live** |
-| 4 | skedari i faturës | Supabase → **Storage** | duhet të ekzistojë bucket-i **`fatura`** (publik) |
+| 4 | skedari i faturës | faqja → **Provo lidhjen** | asnjë paralajmërim për bucket-in; nëse mungon, faqja e thotë vetë dhe jep bllokun SQL |
+
+> Më 16 nëntor 2026 u verifikua: pikat 1–4 **kalojnë** (bucket-i `fatura` ekziston, publik).
 
 Nëse pikat 1–3 kalojnë e pika 4 jo, ekzekuto **vetëm** bllokun “Bucket-i i faturave”
 dhe “Sinkronizimi live” te [Shtojca A](#shtojca-a--blloqe-sql-për-atë-që-mungon):
 20 sekonda në **SQL Editor → New query → Run**. Pa të, *Ruaj faturën* me skedar
 shfaq `bucket not found` dhe skedari nuk ruhet.
+
+> **Që nga 16 nëntori 2026** faqja e kontrollon vetë këtë: *Provo lidhjen* bën një GET të
+> vogël mbi një objekt që s’ekziston. `NoSuchKey` = bucket-i është aty; `NoSuchBucket` =
+> mungon, dhe faqja shfaq paralajmërimin “Blerjet ruhen, por skedarët e faturave jo —
+> mungon bucket-i “fatura””, me hapat. Tabelat mbeten “Online · live” (blerjet ruhen),
+> prandaj mos u shqetëso për shenjën.
 
 > **Të dhënat:** më 16 nëntor 2026 baza kishte 1 blerje, 1 furnitor dhe 1 artikull
 > (rreshti i provës “Permistop / Fatos Sadiku”). Nëse ke kopje JSON të vjetër, ktheje me

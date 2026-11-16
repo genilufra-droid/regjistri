@@ -62,6 +62,7 @@ const fakeLS = {
 };
 
 global.window = {
+  __skipBucketProbe: true,      // provat nuk shkojnë në rrjet
   SUPABASE_URL: 'https://demo-projekt.supabase.co',
   SUPABASE_ANON_KEY: 'sb_publishable_demo_1234567890abcdef',
   localStorage: fakeLS, scrollTo() {},
@@ -225,6 +226,46 @@ const TESTS = `
     __submitConn('jo-nje-url', 'sb_publishable_ABCDEFGHIJKLMNOP1234567890');
     await W(100);
     A.ok(document.querySelector('#connErr').textContent.includes('https://'), 'nuk u refuzua URL-ja');
+  });
+
+  /* ---- bucket-i “fatura”: blerjet ruhen, skedarët jo ---- */
+  const stubBucket = (body) => {
+    global.fetch = async () => ({ ok: false, status: 404, async text() { return body; } });
+  };
+
+  await T('Bucket-i “fatura” mungon → “Provo lidhjen” e thotë dhe jep hapat', async () => {
+    __mode('ok');
+    window.__skipBucketProbe = false;
+    stubBucket('{"statusCode":"404","error":"Bucket not found","message":"Bucket not found","code":"NoSuchBucket"}');
+    __clickAct('conn-test');
+    await W(600);
+    const d = document.querySelector('#connDiag');
+    A.strictEqual(document.querySelector('#netChip').textContent, 'Online · live', 'blerjet duhet të mbeten online');
+    A.ok(d.hidden === false, 'nuk u shfaq shpjegimi');
+    A.ok(/fatura/.test(d.innerHTML), 'nuk përmendet bucket-i: ' + d.innerHTML.slice(0, 90));
+    A.ok(/SQL Editor/.test(d.innerHTML), 'mungojnë hapat');
+  });
+
+  await T('Bucket-i “fatura” është aty → asnjë paralajmërim', async () => {
+    __mode('ok');
+    window.__skipBucketProbe = false;
+    stubBucket('{"statusCode":"404","error":"not_found","message":"Object not found","code":"NoSuchKey"}');
+    __clickAct('conn-test');
+    await W(600);
+    const d = document.querySelector('#connDiag');
+    A.ok(!/bucket-i/i.test(d.innerHTML), 'paralajmërim për bucket-in pa arsye: ' + d.innerHTML.slice(0, 90));
+    A.strictEqual(document.querySelector('#netChip').textContent, 'Online · live');
+  });
+
+  await T('Nëse Storage-i s’përgjigjet fare, lidhja mbetet “Online” pa alarm', async () => {
+    __mode('ok');
+    window.__skipBucketProbe = false;
+    global.fetch = async () => { throw new TypeError('Failed to fetch'); };
+    __clickAct('conn-test');
+    await W(600);
+    A.strictEqual(document.querySelector('#netChip').textContent, 'Online · live');
+    A.ok(!/bucket-i/i.test(document.querySelector('#connDiag').innerHTML), 'alarm i rremë nga Storage-i');
+    window.__skipBucketProbe = true;
   });
 
   __info('Shkrime drejt serverit gjatë provës', __db.purchases.length + ' blerje në bazë');

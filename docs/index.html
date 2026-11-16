@@ -2780,6 +2780,41 @@ function connFail(d) {
   showBanner('<b>' + esc(d.title) + '</b> — të dhënat e reja ruhen në këtë pajisje dhe dërgohen vetë kur lidhja kthehet.');
 }
 
+/* Prova e bucket-it “fatura”: skedarët (foto/PDF) ruhen aty. Një GET mbi një emër
+   që s’ekziston e dallon “bucket-i mungon” (NoSuchBucket) nga “bucket-i është aty,
+   skedari jo” (NoSuchKey) — pa futur gjë dhe pa çelës sekret. */
+async function probeFilesBucket() {
+  try {
+    if (typeof window !== 'undefined' && window.__skipBucketProbe === true) return null;
+    if (typeof fetch !== 'function') return null;
+    const base = String(CFG.url || '').replace(/\/+$/, '');
+    if (!base) return null;
+    const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    const timer = ctl ? setTimeout(() => ctl.abort(), 4000) : null;
+    let body = '';
+    try {
+      const r = await fetch(base + '/storage/v1/object/public/' + BUCKET + '/__probe__',
+        ctl ? { signal: ctl.signal } : undefined);
+      body = await r.text();
+    } finally { if (timer) clearTimeout(timer); }
+    if (/NoSuchBucket|Bucket not found/i.test(body)) return 'missing';
+    if (/NoSuchKey|Object not found|not_found/i.test(body)) return 'ok';
+    return null;
+  } catch (e) { return null; }
+}
+function bucketDiag() {
+  return {
+    warn: true,
+    title: 'Blerjet ruhen, por skedarët e faturave jo — mungon bucket-i “fatura”',
+    body: 'Tabelat përgjigjen (blerjet ruhen normalisht), por Storage-i s’ka bucket-in “fatura”, prandaj foto/PDF-ja e faturës nuk ngarkohet.',
+    steps: [
+      'Hap Supabase → SQL Editor → New query.',
+      'Ngjit bllokun “Bucket-i i faturave” nga UDHEZUES-SUPABASE.md (Shtojca A) → Run.',
+      'Shtyp “Provo lidhjen” sërish.'
+    ]
+  };
+}
+
 async function connTest() {
   showDiag(null); showBanner('');
   Net.chip('Po provohet…', '');
@@ -2792,8 +2827,11 @@ async function connTest() {
     Net.chip('Online · live', 'ok');
     Net.listen();
     sayState('Lidhja punon. Të dhënat ruhen te Supabase dhe i sheh i gjithë stafi.', 'ok');
-    showDiag(Net.schemaOld ? migrationDiag() : null); showBanner('');
-    if (Net.schemaOld) toast('Baza ka skemë të vjetër: ekzekuto migrimin (schema.sql) në SQL Editor.');
+    const bucket = await probeFilesBucket();
+    showDiag(bucket === 'missing' ? bucketDiag() : Net.schemaOld ? migrationDiag() : null);
+    showBanner('');
+    if (bucket === 'missing') toast('Mungon bucket-i “fatura” — skedarët e faturave nuk ruhen (shih udhëzuesin).');
+    else if (Net.schemaOld) toast('Baza ka skemë të vjetër: ekzekuto migrimin (schema.sql) në SQL Editor.');
     else toast('Lidhja me bazën punon');
     return true;
   } catch (e) {
