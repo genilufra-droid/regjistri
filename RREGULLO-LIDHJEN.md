@@ -25,11 +25,11 @@ Hap <https://supabase.com/dashboard> dhe shiko listën e projekteve.
 | Projekti nuk është në listë (as te organizatat e tjera) | Projekti është **fshirë** | [§2](#2-projekti-u-fshi-ose-u-krijua-i-ri-url-tjetër) |
 | Nuk hyni dot në llogari | Llogaria/emaili ka ndryshuar | Rikthe llogarinë, pastaj shiko sërish |
 
-> **27 tetor 2026:** emri `vikcvnioouxnchwrnahk.supabase.co` **nuk zgjidhet më në
-> DNS** (NXDOMAIN) — projekt i pezulluar normalisht vazhdon të zgjidhet. Pra me
-> shumë gjasa projekti është **fshirë**, jo thjesht i pezulluar. Nëse nuk e shihni
-> në panel, shkruaji **Supabase Support** brenda pak ditësh (mund të rikthejnë
-> backup-in) dhe ndërkohë vazhdo me §2.
+> **Përditësim 16 nëntor 2026:** projekti `vikcvnioouxnchwrnahk` **është rikthyer dhe
+> punon** (URL-ja zgjidhet në DNS, `meta`/`purchases` përgjigjen me çelësin publik).
+> Në atë rast nuk ke nevojë për projekt të re: kontrollo vetëm bucket-in `fatura` dhe
+> sinkronizimin live — shih [`UDHEZUES-SUPABASE.md`](UDHEZUES-SUPABASE.md)
+> §“Projekti i vjetër u rikthye”. §2 mbetet për rastin kur projekti është vërtet i fshirë.
 
 ---
 
