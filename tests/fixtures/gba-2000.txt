@@ -1,0 +1,41 @@
+# Skanim (imazh) i faturës GBA PARAPAGES ANALIZA MOSTRAVE — tekst i nxjerrë me OCR (sqi+eng).
+# Mbeturina reale: 'fiir' në vend të 'für', numri i faturës me '/' të lexuar si '1', totali në ALL.
+FATURE TATIMORE
+89612026
+Vetëfaturim -
+Data/Ora: 11.11.2026 11:45:55
+- ra r, dr, pd
+Fatura Nr. 89612026 A Ta Du: [=] SE o ao
+Kodi biznesit: kr537tx787 ™ hg E At AS
+ËSH Ta - ws fore
+Kodi operatorit vk775y1604 . ks 2k - oT
+o=ri 0 ree YO Lp TH SROs fy 0 3
+NSLF: 3899F7D1E5A844624886F6AE74B1FB4A TE im : CRT
+NIFV: 6fc36a23-4b90-479e-961a-297e41189b82 - VESET ES JI Sh Egi
+Jr FL pal: i dag që
+[=] , shou y [=] | op; o
+oy =) = ERE er
+Kodi QR Pagesa Kodi QR Fiskalizimi
+Afati pagesés:
+BLERESI 2026-11-11
+SHITESI BIOBES Mënyra pagesës:
+GBA Gesellschaft fiir Bioanalytik mbH | Nipt/Id: L439044011 Transferté bankare: 2000.00
+Nipt/Id: DE118554138 Adresa: Fier GRADISHTE SOPES Banka: HYPOVEREINSBANK-GBA GROUP
+Adresa: GoldtschmidtstraRe 5, 21073 Komuna Gradishte, fshati Sopes, lagjja e IBAN: DE45200300000050404392
+Hamburg vjeter,nr 53 ne qender te fshatit. Kodi swift: COBADEHHXXX
+Qyteti: Hamburg Qyteti: Fier
+Shteti: Albania Monedha: EUR
+Kursi këmbimit: 90.90
+= Pm so Cmimi pa Cmimi me Totali pa Totali me
+Nr. Përshkrimi sa Njësia TVSH TVSH TVSH TVSH
+FISKALIZIM FATURE NR.2026RE 11552
+5
+P AGES ANALIZAT E MOSTRAVE. 2000.000 2000.000 2000.00 2000.00
+Total sasia 1
+PA TVSH: 2000.00 EUR
+TVSH: 0.00 EUR
+Kodi TVSH-së Vlera pa TVSH Vlera e TVSH-së NISUR, TU PAGE: 2000-0 KOR
+TOTALIALL: 181800.00 ALL
+Shénimet: PARAPAGES PER ANALIZAT E MOSTRAVE.
+Shitési Blerési
+Gjeneruar nga DAISY & ETM | www.daisy-etm.com

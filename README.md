@@ -137,8 +137,17 @@ Te skeda **Blerjet** (butoni **📷 Skano faturën**) ose brenda formularit të 
 - **Numri i faturës**: `Nr i Fatures: 2683/2026`, `FATURË TATIMORE Nr. F-2026-0412`, `AO-99`…
 - **Furnitori**: “Emri i Shitesit / Furnitori / Shitësi” ose emri i njohur nga lista jote.
 - **Monedha**: “Monedha: EUR” (edhe kur fatura shfaq edhe totalin në Lekë).
+- **Dy faturat e skanuara reale** janë provat kryesore (`tests/fixtures/ark-hotel.txt`,
+  `gba-2000.txt`): `ARK HOTEL` → nr. 110514, 31.10.2026, 80 EUR; `GBA … Bioanalytik mbH` →
+  nr. 89612026, 11.11.2026, 2.000 EUR (jo 181.800 Lekë nga kursi). `AFRIM DEDEJ`
+  (`afrim-dedej.txt`) → nr. 144, 04.11.2026, 83.991,60 Lekë, 2.100 copë × 33,33.
+- **Mbeturinat e QR-së / OCR-it** (`1:7051 “Dhome Hotel/Euro “DITE:`) pastrohen: hiqet kodi
+  numerik përpara emrit dhe thonjëzat; nëse tabela s'lexohet fare, bëhet **një rresht me
+  totalin**, i shënuar qartë si i hamendësuar — ti e ndryshon ose e shton rreshtin.
 - **Kontroll totali**: nëse shuma e rreshtave nuk përputhet me totalin e faturës (>1%),
-  skaneri të paralajmëron — shenjë se mungon një rresht ose një çmim.
+  skaneri të paralajmëron — shenjë se mungon një rresht ose një çmim. Kur fatura ka
+  `PA TVSH:` + `TVSH:`, krahasimi bëhet me totalin **pa TVSH**, sepse çmimet e rreshtave
+  janë pa TVSH.
 
 - **Pa server, pa çelës API, pa kosto:** OCR-i dhe lexuesi i PDF-së shkarkohen vetëm herën e
   parë (~5–8 MB) nga CDN-ja dhe punojnë në pajisje; ka edhe CDN rezervë.
@@ -180,7 +189,7 @@ Faqja nuk mbetet më te “Baza nuk u arrit” pa shpjegim:
 | `RREGULLO-LIDHJEN.md` | çdo shkak i “Baza nuk u arrit” + hapat e rregullimit |
 | `tests/supabase.test.js` | teston klientin me një Supabase të rremë (12 teste) |
 | `tests/lidhja.test.js` | provon sjelljen kur baza s’përgjigjet ose është e pezulluar (7 prova) |
-| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur (11 prova, me faturë reale fiskale) |
+| `tests/skaneri.test.js` | lexuesi i faturës: tekst → fusha → faturë e ruajtur (17 prova, me 4 fatura reale — dy prej tyre skanime) |
 | `tests/fixtures/fature-bills.txt` | tekst i një PDF-je të vërtetë fiskale (identifikuesit e zëvendësuar) |
 | `tests/live.test.js` | provë e vërtetë kundër projektit (7 prova) — `SUPABASE_URL=… SUPABASE_KEY=… node tests/live.test.js` |
 | `tests/staf.test.js` | provë me dy “pajisje” kundër bazës reale (17 prova) |

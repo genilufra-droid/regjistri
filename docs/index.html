@@ -1947,9 +1947,10 @@ function parseInvoice(raw, knownSuppliers) {
     } else if (ld > -1) {
       const parts = t.split('.');
       if (parts.length > 2) t = t.replace(/\./g, '');
-      /* “1.234” = mijëshe vetëm kur s’ka presje dhjetore dhe pjesa e plotë s’është 0
-         (“0.375” është thyesë, jo 375!). */
-      else if (parts[1] && parts[1].length === 3 && t.length > 4 && !decComma && parts[0] !== '0') t = t.replace('.', '');
+      /* “1.234” = mijëshe vetëm kur pjesa e plotë ka 1–3 shifra dhe s’ka presje dhjetore
+         në dokument. Përndryshe është thyesë: “0.375” = 0.375, “2000.000” = 2000 (jo 2.000.000). */
+      else if (parts[1] && parts[1].length === 3 && t.length > 4 && !decComma &&
+               parts[0] !== '0' && parts[0].length <= 3) t = t.replace('.', '');
     }
     const n = parseFloat(t);
     return isFinite(n) ? (neg ? -n : n) : null;
@@ -1986,21 +1987,23 @@ function parseInvoice(raw, knownSuppliers) {
   if (!date) date = findDate(flat.replace(/afati[^\n]{0,30}/gi, ' '), false);
   if (!date) date = findDate(flat.replace(/afati[^\n]{0,30}/gi, ' '), true);
 
-  /* ---------- numri i faturës ---------- */
+  /* ---------- numri i faturës ----------
+     Etiketat që përdorin fatura shqipe: “Nr i Fatures: 2683/2026”, “Nr. Fature 110514”,
+     “Fatura Nr. 896/2026”, “Numri i Faturës: 144”, “FATURË TATIMORE Nr. F-2026-0412”. */
   let invoice = null;
+  const looksDate = v => /^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}$/.test(v);
   const invPatterns = [
-    /nr[.\s]*(?:i\s*)?fatur[aëe]s?[^\d\n]{0,20}([\w\-\/]{2,24})/i,          // “Nr i Fatures: 2683/2026”
-    /fatur[aëe]s?[^\d\n]{0,24}nr[.\s:]{0,3}([\w\-\/]{2,24})/i,               // “FATURË TATIMORE Nr. F-2026-0412”
-    /(?:invoice|bill)\s*(?:no\.?|nr\.?)?[^\d\n]{0,12}?([\w\-\/]{2,24})/i,
+    /(?:nr[.\s]*(?:i\s*)?fatur[aëe]s?|fatur[aëe]s?[^\d\n]{0,12}nr[.\s:]{0,3}|numri\s*(?:i\s*)?fatur[aëe]s?|fatura\s*nr[.\s:]{0,3}|\binvoice\s*(?:no\.?|nr\.?|number)|\bbill\s*(?:no\.?|nr\.?))[^\d\n]{0,12}?([A-Za-z0-9][\w\-\/]{0,23})/i,
     /\b([A-Z]{1,4}-\d{1,5}(?:[-/]\d{1,6})?)\b/,
-    /\b(\d{2,7}\/\d{2,4})\b/                                                  // bills.al: 2683/2026
+    /\b(\d{2,7}\/\d{2,4})\b/
   ];
   for (const rx of invPatterns) {
     const m = flat.match(rx);
     if (!m) continue;
-    const v = String(m[1]).replace(/\s+/g, '').trim();
-    if (!v || /^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}$/.test(v)) continue;        // jo datë
-    if (/^(?:data|date|ora|time)$/i.test(v)) continue;
+    const v = String(m[1]).replace(/\s+/g, '').replace(/[|;:,.]+$/, '').trim();
+    if (!v || looksDate(v)) continue;
+    if (/^(?:data|date|ora|time|fiskalizim\w*|fiskal\w*|qr)$/i.test(v)) continue;
+    if (/^(?:tatimor\w*|tatimore|shitje|blerje|sh[eë]rbim\w*|mall\w*)$/i.test(v)) continue;   // kokë faqeje, jo numër
     invoice = v; break;
   }
 
@@ -2020,18 +2023,21 @@ function parseInvoice(raw, knownSuppliers) {
   if (!supplier) {
     const lbl = /(?:emri\s*i\s*)?(?:shit[eë]sit|shit[eë]s|furnitorit|furnitor|furnizuesit|furnizues|seller|supplier|company|shoq[eë]ria)[^\n:]{0,18}:\s*([^\n]{3,90})/i;
     const m = joined.match(lbl) || flat.match(lbl);
-    if (m) supplier = m[1];
+    const company = lines.find(l => /(?:mbh|gmbh|shpk|sh\.?p\.?k|\bltd\b|\bllc\b|\bs\.?a\.?\b|group|group\b)/i.test(l) &&
+      !/fatur|invoice|dat[ëe]|total|tvsh|bler[eë]s|www\./i.test(l));
+    if (m && !/^(?:blo|shitesi|sellers?)$/i.test(String(m[1]).trim())) supplier = m[1];
+    else if (company) supplier = String(company).split('|')[0];
     else supplier = lines.find(l => /[A-Za-zËëÇçÀ-ÿ]{3}/.test(l) &&
       !/fatur|invoice|dat[ëe]|date|nr\.|total|tvsh|vat|tel|email|@|www\.|bills\.al|qr/i.test(l)) || '';
     supplier = String(supplier)
-      .split(/emri\s*i\s*bler[eë]sit|adresa|nipt|nivf|numri\s*i\s*identifikimit|tel|email|@/i)[0]
+      .split(/emri\s*i\s*bler[eë]sit|adresa|\bnipt\b|\bnivf\b|numri\s*i\s*identifikimit|\btel\b|\btelefon\w*|\bemail\b|@|\biban\b|\bns\b/i)[0]
       .replace(/[|;].*$/, '').replace(/\s{2,}/g, ' ').replace(/^[^\wËëÇçÀ-ÿ]+/, '').trim().slice(0, 60);
   }
 
   /* ---------- rreshtat ----------
      Nga fundi i rreshtit merren numrat; pastaj provohen formatet që “bëjnë
      matematikë”: sasi×çmim=total · sasi×çmim=neto, neto+TVSH=bruto. */
-  const skipRx = /total|n[eë]ntotal|subtotal|tvsh|\bvat\b|zbritje|discount|transport|firm[ëe]|firma|pages|paguaj|iban|swift|tel|email|@|www\.|klient|customer|adres|nipt|nivf|ns|referenca|operator|banka|afati|kursi|monedha|or[aë]\s*:|shenim|sh[eë]nim|qr|fiskal|shitesi|bleresi|transportuesi|logo|faqe/i;
+  const skipRx = /total|n[eë]ntotal|subtotal|tvsh|\bvat\b|zbritje|discount|transport|firm[ëe]|firma|pages|paguaj|iban|swift|\btel\b|\btelefon\w*|email|@|www\.|klient|customer|adres|nipt|nivf|\bns\b|referenca|operator|banka|afati|kursi|monedha|or[aë]\s*:|shenim|sh[eë]nim|qr|fiskal|shitesi|bleresi|transportuesi|logo|faqe/i;
   const eq = (a, b, tol = 0.02) => a != null && b != null && Math.abs(a - b) <= Math.max(0.03, Math.abs(b) * tol);
 
   /* Çmimi për njësi: 2 decimale; nëse kështu totali nuk del, 4 (0.375 → 0.375). */
@@ -2041,7 +2047,7 @@ function parseInvoice(raw, knownSuppliers) {
     return Math.abs(p2 * qty - net) <= Math.max(0.005, Math.abs(net) * 0.0005) ? p2 : Math.round(exact * 10000) / 10000;
   }
 
-  function pickRow(nums) {                // nums: numrat e rreshtit, në rend
+  function pickRow(nums, hasUnit) {      // nums: numrat e rreshtit, në rend
     const n = nums.length;
     const tryQtyPrice = (q, net, price) => (q > 0 && price >= 0 && (net == null || eq(q * price, net))) ? { qty: q, price } : null;
     if (n >= 5) {                         // sasi · çmim · neto · TVSH · bruto
@@ -2061,14 +2067,38 @@ function parseInvoice(raw, knownSuppliers) {
       if (r) return { qty: q, price: round2(p) };
       if (q > 0 && eq(q * p, tot)) return { qty: q, price: round2(p) };
     }
-    if (n >= 2) {                         // sasi · çmim
-      const [q, p] = nums.slice(n - 2);
+    /* Kolona “sasi 1 × çmim = total” kur OCR-i i lexon të gjitha si të njëjta. */
+    if (n >= 3) {
+      const tail = nums.slice(-4).filter(v => v > 0);
+      if (tail.length >= 3) {
+        const mx = Math.max.apply(null, tail), mn = Math.min.apply(null, tail);
+        if (mn > 0 && mx / mn < 1.5) return { qty: 1, price: round2(tail[tail.length - 1]) };
+      }
+    }
+    /* Fallback i përgjithshëm: gjej çdo çift (a,b) ku a×b del një numër tjetër i rreshtit.
+       Kështu lexohen formatet me kolona shtesë (zbritje %, normë TVSH, kurs…). */
+    for (let i = 0; i < n - 1; i++) {
+      if (!(nums[i] > 0)) continue;
+      for (let j = i + 1; j < n - 1; j++) {
+        if (!(nums[j] > 0)) continue;
+        for (let k = j + 1; k < n; k++) {
+          if (eq(nums[i] * nums[j], nums[k])) {
+            return { qty: nums[i], price: bestPrice(nums[k], nums[i]) };
+          }
+        }
+      }
+    }
+    /* Vetëm dy numra, me njësi të njohur në rresht → sasi · çmim.
+       (Pa këtë kusht, tekst i prishur nga OCR-i sajon çmime të rreme.) */
+    if (n === 2 && hasUnit) {
+      const [q, p] = nums;
       if (q > 0 && p >= 0) return { qty: q, price: round2(p) };
     }
     return null;
   }
 
   const rows = [];
+  let nameGuess = '';
   lines.forEach(line => {
     if (skipRx.test(line)) return;
     const toks = line.split(' ').filter(Boolean);
@@ -2083,8 +2113,8 @@ function parseInvoice(raw, knownSuppliers) {
       else if (toks.length > 2) { /* vazhdo: emri mund të përmbajë numra si “4x40” */ }
     }
     if (nums.length < 2) return;
-    const picked = pickRow(nums);
-    if (!picked) return;
+    const um = line.match(/\s(?:cope|cop[ëe]|set|kg|kile|gr|ml|lit[eë]r|litra|m²|m2|m|kuti|thes|kov[ëe]|palet[ëe]?|pak)\b/i);
+    const picked = pickRow(nums, !!um);
 
     let name = toks.slice(0, cut).join(' ')
       .replace(/^\d{1,4}[.)]?\s+/, '')                 // nr. i rreshtit
@@ -2093,8 +2123,15 @@ function parseInvoice(raw, knownSuppliers) {
       .replace(/\s{2,}/g, ' ')
       .trim();
     if (name.length < 2 || !/[A-Za-zËëÇçÀ-ÿ]{2}/.test(name)) return;
+    /* Rresht me numra por pa aritmetikë të qartë: e mbajmë emrin për rreshtin rezervë. */
+    if (!picked) {
+      if (!nameGuess) {
+        nameGuess = name.replace(/^\d{1,4}[:.)]\s*\d*\s*/, '').replace(/[“”"'`]/g, '').trim();
+        nameGuess = nameGuess.replace(/(?:\s+\S*\d\S*)+$/, '').replace(/[\s:;\-–]+$/, '').trim();
+      }
+      return;
+    }
 
-    const um = line.match(/\s(?:cope|cop[ëe]|set|kg|kile|gr|ml|lit[eë]r|litra|m²|m2|m|kuti|thes|kov[ëe]|palet[ëe]?|pak)\b/i);
     rows.push({
       product: name.slice(0, 80),
       qty: String(picked.qty),
@@ -2103,13 +2140,62 @@ function parseInvoice(raw, knownSuppliers) {
     });
   });
 
-  const totalLine = (() => {
-    const m = flat.match(/(?:total|gjithsej|për\s*pages[ëe]?)[^\d\n]{0,16}([\d][\d.,]{1,15})/i);
-    return m ? num(m[1]) : null;
+  /* Totali pa TVSH (për të krahasuar rreshtat, që japin çmime pa TVSH). */
+  const netTotal = (() => {
+    const paLine = lines.find(l => /^\s*pa\s*tvsh\s*[:.]/i.test(l));
+    if (paLine) {
+      const a = paLine.match(/[\d][\d.,]*/g);
+      if (a && a.length) return num(a[0]);
+    }
+    /* Rreshti i totalit me tri vlera: neto + TVSH = bruto. */
+    for (const l of lines) {
+      if (!/^\s*(?:total|gjithsej|totale)/i.test(l)) continue;
+      if (/kurs|sasia/i.test(l)) continue;
+      const a = (l.match(/[\d][\d.,]*/g) || []).map(num);
+      if (a.length >= 3 && Math.abs(a[0] + a[1] - a[2]) < Math.max(0.02, a[2] * 0.001)) return a[0];
+    }
+    return null;
   })();
 
+  /* Totali: “TOTALI PER TU PAGUAR”, “Totali per tu paguar (LEK)”, “TOTALI 1.00 EUR … 80”,
+     “Totali 10,681.34 2,136.28 12,817.62”. Merret numri i fundit i rreshtit — ai është
+     totali me TVSH; rreshtat “Vlera totale e TVSH-së”/“Total sasia” shpërfillen. */
+  const totalLine = (() => {
+    const rows2 = lines.map((l, i) => ({ l, i }));
+    const lastName = l => {
+      const m = l.match(/[\d][\d.,]*/g);
+      return m && m.length ? num(m[m.length - 1]) : null;
+    };
+    const pay = rows2.find(r => /paguar|paguaj|pages[ëe]?\s*(?:për|per)?\s*t|p[eë]r\s*t['’]?\s*u\s*paguar/i.test(r.l) && !/afat/i.test(r.l));
+    if (pay) { const v = lastName(pay.l); if (v != null) return v; }
+    /* “PA TVSH: 2000.00 EUR” + “TVSH: 0.00 EUR” → totali (shpesh i vetmi që lexohet pastër) */
+    const netL = rows2.find(r => /^\s*pa\s*tvsh\s*[:.]/i.test(r.l));
+    const vatL = rows2.find(r => /^\s*tvsh\s*[:.]/i.test(r.l));
+    if (netL) {
+      const net = lastName(netL.l), vat = vatL ? lastName(vatL.l) : 0;
+      if (net != null && vat != null) return round2(net + vat);
+    }
+    const curRe = currency === 'EUR' ? /eur|€/i : currency === 'ALL' ? /lek|all|\bl\b/i : null;
+    const tot = rows2.filter(r => /^\s*(?:total|gjithsej|totale)/i.test(r.l) && !/sasia|qty|tvsh-s|vlera|norma|kodi/i.test(r.l));
+    const totCur = curRe ? tot.find(r => curRe.test(r.l)) : null;
+    if (totCur) { const v = lastName(totCur.l); if (v != null) return v; }
+    if (tot.length) { const v = lastName(tot[0].l); if (v != null) return v; }
+    const any = rows2.find(r => /\btotal/i.test(r.l) && !/sasia|qty|tvsh-s|vlera totale/i.test(r.l));
+    return any ? lastName(any.l) : null;
+  })();
+
+  /* S’u lexua asnjë rresht, por totali dihet: vendos një rresht të vetëm me totalin,
+     që përdoruesi vetëm ta ndreqë — më mirë se një tabelë bosh. */
+  let rowsGuessed = false;
+  if (!rows.length && totalLine != null && totalLine > 0) {
+    const item = nameGuess || lines.find(l => /[A-Za-zËëÇç]{4}/.test(l) &&
+      !/fatur|invoice|\bdat[aëe]\b|\bora\b|total|tvsh|nipt|nivf|\bns\b|operator|banka|iban|kursi|monedha|pages|adres|shit[eë]s|bler[eë]s|telefon|kodi|\bqr\b|fiskal|sh[eë]nim|gjithsej|njesia|sasia|cmimi|çmimi/i.test(l));
+    rows.push({ product: (item || 'Sipas faturës').slice(0, 80), qty: '1', unit: 'copë', price: String(round2(totalLine)) });
+    rowsGuessed = true;
+  }
+
   return { supplier: supplier || '', invoice: invoice || '', date: date || '', currency: currency || '',
-    rows, total: totalLine, text };
+    rows, rowsGuessed, total: totalLine, netTotal, text };
 }
 
 function scanAnalyze(text) {
@@ -2137,8 +2223,11 @@ function renderScanRes(p) {
   /* Shuma e rreshtave kundrejt totalit të lexuar në faturë (toleron centat). */
   let sumWarn = '';
   const rowsSum = (p.rows || []).reduce((s, r) => s + (+r.qty || 0) * (+r.price || 0), 0);
-  if (p.total != null && rowsSum > 0 && Math.abs(rowsSum - p.total) > Math.max(1, p.total * 0.01)) {
-    sumWarn = `<div class="scanwarn"><b>Kujdes:</b> shuma e rreshtave (${esc(money(rowsSum, p.currency || 'ALL'))}) nuk përputhet me totalin e faturës (${esc(money(p.total, p.currency || 'ALL'))}). Kontrollo një rresht që mungon ose një çmim.</div>`;
+  const refTotal = p.netTotal != null ? p.netTotal : p.total;
+  const refLabel = p.netTotal != null && p.total != null && Math.abs(p.netTotal - p.total) > 0.01
+    ? 'totalin pa TVSH' : 'totalin e faturës';
+  if (refTotal != null && rowsSum > 0 && Math.abs(rowsSum - refTotal) > Math.max(1, refTotal * 0.01)) {
+    sumWarn = `<div class="scanwarn"><b>Kujdes:</b> shuma e rreshtave (${esc(money(rowsSum, p.currency || 'ALL'))}) nuk përputhet me ${refLabel} (${esc(money(refTotal, p.currency || 'ALL'))}). Kontrollo një rresht që mungon ose një çmim.</div>`;
   }
   const bad = [];
   if (!p.supplier) bad.push('furnitori');
@@ -2165,6 +2254,7 @@ function renderScanRes(p) {
     </div>
     <div class="gridfoot"><button type="button" class="btn ghost sm" data-scandd="1">+ Shto artikull</button></div>
     ${bad.length ? `<div class="scanwarn"><b>Nuk u lexua:</b> ${esc(bad.join(', '))}. Plotësoji me dorë më poshtë ose te formulari.</div>` : ''}
+    ${p.rowsGuessed ? `<div class="scanwarn"><b>Rreshtat nuk u lexuan mirë</b> (foto e skanuar, kod QR pranë tabelës). U vendos një rresht me totalin e faturës — ndreqe ose shto rreshtat sipas faturës.</div>` : ''}
     ${sumWarn}
     ${p.total != null ? `<p style="font-size:13px;color:var(--muted);margin:8px 0 0">Totali i lexuar në faturë: <b>${esc(money(p.total, p.currency || 'ALL'))}</b> — kontrolloje me shumën e rreshtave.</p>` : ''}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--muted)">Teksti i lexuar (për kontroll)</summary><div class="scantext">${esc(p.text.slice(0, 3000))}</div></details>

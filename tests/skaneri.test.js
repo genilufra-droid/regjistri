@@ -95,6 +95,7 @@ global.__t = async (n, fn) => {
 };
 global.__A = assert;
 global.__REAL = fs.readFileSync(path.join(__dirname, 'fixtures', 'fature-bills.txt'), 'utf8').replace(/^#.*$/gm, '');
+global.__FIX = n => fs.readFileSync(path.join(__dirname, 'fixtures', n), 'utf8').replace(/^#.*$/gm, '');
 global.__W = W;
 global.__File = File;
 global.__Uint8Array = Uint8Array;
@@ -219,7 +220,8 @@ const TESTS = `
     A.strictEqual(p.invoice, '2683/2026', 'numri: ' + p.invoice);
     A.strictEqual(p.date, '2026-11-06', 'data: ' + p.date + ' (jo afati i pagesës 16.11.2026)');
     A.strictEqual(p.currency, 'EUR');
-    A.strictEqual(p.total, 10681.34, 'totali: ' + p.total);
+    A.strictEqual(p.total, 12817.62, 'totali për t’u paguar: ' + p.total);
+    A.strictEqual(p.netTotal, 10681.34, 'totali pa TVSH: ' + p.netTotal);
   });
 
   await T('Faturë e vërtetë: 4 rreshta me sasi, njësi e çmim të saktë', async () => {
@@ -275,6 +277,70 @@ const TESTS = `
     A.strictEqual(ours.length, 4, 'në bazë: ' + ours.length);
     A.strictEqual(new Set(ours.map(x => x.documentId)).size, 1);
     A.strictEqual(__db.purchases.length, before + 4);
+  });
+
+  /* ---------------- skanime të vërteta (imazh → OCR) ---------------- */
+
+  await T('Skanim ARK HOTEL: furnitori, numri, data, monedha, totali', async () => {
+    const p = parseInvoice(__FIX('ark-hotel.txt'), []);
+    A.strictEqual(p.supplier, 'ARK HOTEL', 'furnitori: ' + p.supplier);
+    A.strictEqual(p.invoice, '110514', 'numri: ' + p.invoice);
+    A.strictEqual(p.date, '2026-10-31', 'data: ' + p.date);
+    A.strictEqual(p.currency, 'EUR');
+    A.strictEqual(p.total, 80, 'totali: ' + p.total);
+  });
+
+  await T('Skanim ARK HOTEL: një rresht i vetëm, pa emrin e mbeturinave të QR-së', async () => {
+    const p = parseInvoice(__FIX('ark-hotel.txt'), []);
+    A.strictEqual(p.rows.length, 1, 'rreshtat: ' + JSON.stringify(p.rows));
+    A.strictEqual(+p.rows[0].qty, 1);
+    A.strictEqual(+p.rows[0].price, 80);
+    A.ok(p.rowsGuessed, 'rreshti duhet shënuar si i hamendësuar');
+    A.ok(!/^\s*\d{1,4}[:.)]/.test(p.rows[0].product || ''), 'kodi i QR-së mbeti në emër: ' + p.rows[0].product);
+  });
+
+  await T('Skanim GBA: furnitori, numri, data, totali 2000 EUR', async () => {
+    const p = parseInvoice(__FIX('gba-2000.txt'), []);
+    A.ok(p.supplier.indexOf('GBA ') === 0, 'furnitori: ' + p.supplier);
+    A.ok(p.supplier.indexOf('Bioanalytik') > 0, 'emri i plotë i furnitorit: ' + p.supplier);
+    A.strictEqual(p.invoice, '89612026', 'numri: ' + p.invoice);
+    A.strictEqual(p.date, '2026-11-11', 'data: ' + p.date);
+    A.strictEqual(p.currency, 'EUR');
+    A.strictEqual(p.total, 2000, 'totali: ' + p.total);
+    A.strictEqual(p.netTotal, 2000, 'pa TVSH: ' + p.netTotal);
+  });
+
+  await T('Skanim GBA: rreshti unik 1 × 2000 (totali nuk bëhet 181800 ALL)', async () => {
+    const p = parseInvoice(__FIX('gba-2000.txt'), []);
+    A.strictEqual(p.rows.length, 1, 'rreshtat: ' + JSON.stringify(p.rows));
+    A.strictEqual(+p.rows[0].qty, 1);
+    A.strictEqual(+p.rows[0].price, 2000);
+    A.ok(/MOSTRAVE/i.test(p.rows[0].product || ''), 'emri: ' + p.rows[0].product);
+  });
+
+  await T('Faturë e vërtetë AFRIM DEDEJ (PDF me tekst): 144 / ALL / 83991.60', async () => {
+    const p = parseInvoice(__FIX('afrim-dedej.txt'), []);
+    A.strictEqual(p.supplier, 'Afrim Dedej', 'furnitori: ' + p.supplier);
+    A.strictEqual(p.invoice, '144', 'numri: ' + p.invoice);
+    A.strictEqual(p.date, '2026-11-04', 'data: ' + p.date);
+    A.strictEqual(p.currency, 'ALL');
+    A.strictEqual(p.total, 83991.6, 'totali: ' + p.total);
+    A.strictEqual(p.rows.length, 1, 'rreshtat: ' + JSON.stringify(p.rows));
+    A.strictEqual(+p.rows[0].qty, 2100);
+    A.strictEqual(+p.rows[0].price, 33.33);
+    A.ok(/KENDE/i.test(p.rows[0].product || ''), 'emri: ' + p.rows[0].product);
+  });
+
+  await T('Të tria skanimet plotësojnë formularin pa e prishur njëra-tjetrën', async () => {
+    for (const f of ['ark-hotel.txt', 'gba-2000.txt', 'afrim-dedej.txt']) {
+      const p = parseInvoice(__FIX(f), []);
+      applyScanned(Object.assign({}, p, { lines: p.rows }));
+      A.strictEqual(document.getElementById('fpSupplier').value, p.supplier, f + ': furnitori në formular');
+      A.strictEqual(document.getElementById('fpInvoice').value, p.invoice, f + ': numri në formular');
+      A.strictEqual(document.getElementById('fpCur').value, p.currency, f + ': monedha në formular');
+      A.strictEqual(FORM.lines.length, p.rows.length, f + ': rreshtat në formular');
+      A.ok(FORM.lines.every(l => +l.qty > 0 && +l.price > 0), f + ': sasi/çmim bosh');
+    }
   });
 
   __done();

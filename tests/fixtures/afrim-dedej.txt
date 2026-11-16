@@ -1,0 +1,30 @@
+# Faturë e vërtetë AFRIM DEDEJ (PDF me tekst), e nxjerrë me pdf.js sipas koordinatave.
+# Rreshti i artikullit: 'B KENDE 2 MT Cope 2100.00 33.33 ... 83991.60'.
+FATURË
+Shitësi: Afrim Dedej
+Adresa: Fshati Dushk ,Njesia Administrative Dushk , godina me numer
+pasurie 254/4-Nd , zona kadastrale nr 1583 ., DUSHK, Albania
+Numri Unik i Identifikimit : L63916403R
+Data dhe ora e lëshimit të faturës: 2026-11-04 09:48:31.0
+Numri i Faturës: 144
+Operatori: sw199yx444
+Kodin e vendit të ushtrimit të veprimtarisë: kt936xm931
+Lloji i Faturës: Faturë pa para
+Blerësi: BIOBES
+Adresa: Komuna Gradishte, fshati Sopes, lagjja e vjeter,nr 53 ne qender
+Numri Unik i Identifikimit: L43904401I
+Përshkrimi i Mallit ose Shërbimit Njësia e Matjes Sasia Çmimi për njësi pa Zbritje % Norma e TVSH Vlera pa TVSH (sasi x çmimi) (vlera) TVSH Vlera Totale
+tvsh
+B KENDE 2 MT Cope 2100.00 33.33 20.00 69993.00 13998.60 83991.60
+Vlera pa TVSH 69993.00
+Vlera totale e TVSH-së 13998.60
+Totali per tu paguar (LEK) 83991.60
+Shpërndarja e TVSH-së
+Norma e TVSH-së Baza e tatueshme (LEK) Vlera e TVSH-së(LEK)
+20.00 69993.00 13998.60
+Data dhe ora e kryerjes së pagesës: 11/10/26 00:00 AM
+Numri i sigurisë së lëshuesit të faturës (NSLF): 76A7DB6021797FC0DFCC7E9BC149145C
+Numri identifikues të veçantë të faturës (NIVF): b6c8f3d2-614b-4c7b-9f98-4651087388df
+Mënyrën e pagesës:
+Lloji Sasi (LEK)
+Llogari e transaksionit 83991.60
