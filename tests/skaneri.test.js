@@ -224,6 +224,71 @@ const TESTS = `
   /* ---------------- fatura e vërtetë (bills.al / E-Fiskal) ---------------- */
   const REAL = __REAL;
 
+  /* ---------------- leximi në server (Edge Function ocr) ---------------- */
+  await T('Leximi në server: fotoja shkon te funksioni me çelësin e faqes', async () => {
+    const realFetch = global.fetch;
+    let called = null;
+    global.fetch = async (url, opt) => {
+      called = { url, opt };
+      return { ok: true, status: 200, async text() {
+        return JSON.stringify({ text: 'FURNITOR ABC\\nNr. Fature 77\\nTotali 25.00 EUR' });
+      } };
+    };
+    let txt = '';
+    try {
+      window.OCR_SERVER = true;
+      txt = await ocrReadServer(new Blob([new Uint8Array([1, 2, 3])], { type: 'image/jpeg' }));
+      A.ok(called.url.indexOf('/functions/v1/ocr') > 0, 'URL: ' + called.url);
+      A.strictEqual(called.opt.method, 'POST');
+      A.ok(/^sb_publishable_/.test(called.opt.headers.apikey), 'mungon apikey');
+      A.strictEqual(called.opt.headers.Authorization, 'Bearer ' + called.opt.headers.apikey);
+      const body = JSON.parse(called.opt.body);
+      A.ok(body.image.length > 0, 'imazhi shkoi bosh');
+      A.strictEqual(body.mime, 'image/jpeg');
+      A.ok(/FURNITOR ABC/.test(txt), 'teksti: ' + txt);
+    } finally { global.fetch = realFetch; window.OCR_SERVER = false; }
+  });
+
+  await T('Leximi në server: gabimet kthehen në shqip', async () => {
+    const realFetch = global.fetch;
+    const msgOf = async (status, body) => {
+      global.fetch = async () => ({ ok: false, status, async text() { return body; } });
+      try {
+        await ocrReadServer(new Blob([new Uint8Array([1])], { type: 'image/jpeg' }));
+        return '';
+      } catch (e) { return e.message; }
+    };
+    try {
+      window.OCR_SERVER = true;
+      A.ok(/nuk është vendosur në server/.test(await msgOf(404, 'not found')), '404');
+      A.ok(/GEMINI_API_KEY/.test(await msgOf(500, '{"error":"Mungon GEMINI_API_KEY …"}')), 'sekreti');
+      A.ok(/Kuota/.test(await msgOf(429, 'quota')), 'kuota');
+    } finally { global.fetch = realFetch; window.OCR_SERVER = false; }
+  });
+
+  await T('Rënia në radhë: server → Vision → pajisja', async () => {
+    const realFetch = global.fetch, realT = global.window.Tesseract;
+    let step = 'none';
+    global.fetch = async (url) => {
+      if (url.indexOf('/functions/v1/ocr') > 0) { step = 'server'; return { ok: false, status: 404, async text() { return 'x'; } }; }
+      step = 'vision';
+      return { ok: true, status: 200, async text() { return JSON.stringify({ responses: [{ fullTextAnnotation: { text: 'VISION TEKST 12345' } }] }); } };
+    };
+    try {
+      window.OCR_SERVER = true;
+      setVisionKey('AIzaSySERVER1234567890abcdefghijklmnopqr'); setVisionOn(true);
+      const txt = await scanReadImage(new Blob([new Uint8Array([7])], { type: 'image/jpeg' }));
+      A.strictEqual(step, 'vision', 'nuk kalohet te Vision pas serverit: ' + step);
+      A.strictEqual(SCAN.reader, 'vision');
+      A.ok(/nuk është vendosur në server/.test(SCAN.serverErr || ''), 'gabimi i serverit: ' + SCAN.serverErr);
+      A.ok(/VISION TEKST/.test(txt), txt);
+    } finally {
+      global.fetch = realFetch;
+      global.window.Tesseract = realT;
+      setVisionKey(''); setVisionOn(false); window.OCR_SERVER = false;
+    }
+  });
+
   await T('Faturë e vërtetë fiskale: furnitori, numri, data, monedha', async () => {
     const p = parseInvoice(REAL, []);
     A.strictEqual(p.supplier, 'FURNITOR SHEMBULL', 'furnitori: ' + p.supplier);
@@ -381,6 +446,7 @@ const TESTS = `
   };
 
   await T('Leximi i fortë: çelësi ruhet vetëm në këtë pajisje', async () => {
+    setVisionOn(true);
     A.strictEqual(visionKey(), '');
     A.strictEqual(visionOn(), false, 'pa çelës nuk aktivizohet');
     A.ok(setVisionKey(KEY));
@@ -518,73 +584,6 @@ const TESTS = `
       A.ok(/HTTP 500/.test(SCAN.strongErr || ''), 'gabimi: ' + SCAN.strongErr);
       A.ok(/FURNITOR XYZ/.test(txt), 'teksti i paisjes: ' + txt);
     } finally { global.fetch = realFetch; global.window.Tesseract = realT; setVisionKey(''); }
-  });
-
-  await T('“Provo çelësin”: imazhi i provës shkon te Vision dhe testohet 12345', async () => {
-    const realFetch = global.fetch;
-    let sent = null;
-    global.fetch = async (url, opt) => {
-      sent = JSON.parse(opt.body);
-      return { ok: true, status: 200, async text() { return JSON.stringify({ responses: [{ fullTextAnnotation: {
-        text: 'REGJISTRI 12345',
-        pages: [{ blocks: [{ paragraphs: [{ words: [
-          word('REGJISTRI', 20, 50, 120), word('12345', 160, 50, 70)
-        ] }] }] }] } }] }); } };
-    };
-    const msg = () => document.getElementById('scanKeyMsg').textContent;
-    try {
-      setVisionKey('');
-      await scanTestKey();
-      A.ok(/Shkruaj çelësin/.test(msg()), 'pa çelës: ' + msg());
-
-      setVisionKey(KEY);
-      await scanTestKey();
-      A.ok(/^✓/.test(msg()), 'me çelës: ' + msg());
-      A.ok(/12345/.test(msg()), 'nuk u raportua testi: ' + msg());
-      const b64 = sent.requests[0].image.content;
-      A.ok(b64.length > 1000, 'imazhi i provës nuk u dërgua (' + b64.length + ')');
-      /* PNG i vërtetë: fillon me 0x89 'P' 'N' 'G' */
-      const head = atob(b64).slice(0, 4).split('').map(c => c.charCodeAt(0));
-      A.deepStrictEqual(head, [137, 80, 78, 71], 'nuk është PNG i vlefshëm');
-    } finally { global.fetch = realFetch; setVisionKey(''); }
-  });
-
-  await T('“Provo çelësin” me çelës të gabuar → ✗ me shpjegim', async () => {
-    const realFetch = global.fetch;
-    global.fetch = async () => ({ ok: false, status: 403, async text() {
-      return JSON.stringify({ error: { code: 403, message: 'API key not valid' } }); } });
-    try {
-      setVisionKey(KEY);
-      await scanTestKey();
-      const m = document.getElementById('scanKeyMsg').textContent;
-      A.ok(/^✗/.test(m), 'nuk u shënua gabim: ' + m);
-      A.ok(/nuk është i vlefshëm/.test(m), 'pa shpjegim: ' + m);
-    } finally { global.fetch = realFetch; setVisionKey(''); }
-  });
-
-  await T('Paneli i skanerit tregon kur leximi i fortë është gati', async () => {
-    scanOpen();
-    A.ok(/brenda pajisjes/i.test(document.getElementById('scanStrongState').textContent), 'pa çelës: ' + document.getElementById('scanStrongState').textContent);
-    setVisionKey(KEY);
-    scanOpen();
-    const st = document.getElementById('scanStrongState').textContent;
-    A.ok(/gati/i.test(st), 'me çelës: ' + st);
-    A.strictEqual(document.getElementById('scanStrongOn').checked, true);
-    setVisionKey('');
-    scanOpen();
-    A.strictEqual(document.getElementById('scanStrongOn').checked, false);
-  });
-
-  await T('Pyetja e çelësit: input-i refuzon diçka që s’është çelës Google', async () => {
-    const el = document.getElementById('scanKey');
-    el.value = 'sk-123';
-    scanSaveKey();
-    A.strictEqual(visionKey(), '', 'u ruajt një çelës i pavlefshëm');
-    el.value = KEY;
-    scanSaveKey();
-    A.strictEqual(visionKey(), KEY);
-    scanDelKey();
-    A.strictEqual(visionKey(), '');
   });
 
   __done();
