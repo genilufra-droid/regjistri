@@ -1798,16 +1798,48 @@ function scanOpen() {
 }
 
 /* ---- leximi i skedarit ---- */
+/* PDF-ja nuk ka “rreshta”: tekstet janë copa me koordinata. I mbledhim sipas
+   y-së (lart→poshtë) dhe i ndajmë me hapësirë sipas x-së — kështu faturat
+   me kolona (sasi · çmim · TVSH · total) lexohen si tabelë e vërtetë. */
+function pdfLinesFromItems(items) {
+  const rows = [];
+  (items || []).forEach(it => {
+    const str = it.str;
+    if (!str || !str.trim()) return;
+    const y = Math.round(it.transform[5]), x = it.transform[4];
+    let row = rows.find(r => Math.abs(r.y - y) <= 10);      // 10pt toleron tekstin e mbështjellë
+    if (!row) { row = { y, parts: [] }; rows.push(row); }
+    row.parts.push({ x, s: str, w: it.width || String(str).length * 4 });
+  });
+  rows.sort((a, b) => b.y - a.y);                           // PDF: y rritet lart
+  return rows.map(r => {
+    r.parts.sort((a, b) => a.x - b.x);
+    let out = '', lastX = null;
+    r.parts.forEach(p => {
+      if (out) {
+        const gap = lastX == null ? 9 : p.x - lastX;
+        const a = out.slice(-1), b = String(p.s).charAt(0);
+        if (gap > 1.2) out += ' ';
+        else if (/\d/.test(a) && /\d/.test(b)) out += '';    // numër i prerë në dy rreshta
+        else if (!/\s$/.test(out)) out += ' ';               // tekst i mbështjellë
+      }
+      out += p.s;
+      lastX = p.x + (p.w || 0);
+    });
+    return out.replace(/\s+/g, ' ').trim();
+  }).filter(Boolean);
+}
+
 async function scanPdfPagesText(jsPdf, file) {
   const buf = await file.arrayBuffer();
   const doc = await jsPdf.getDocument({ data: new Uint8Array(buf) }).promise;
-  let text = '';
+  const out = [];
   for (let i = 1; i <= Math.min(doc.numPages || 1, 5); i++) {
     const page = await doc.getPage(i);
     const tc = await page.getTextContent();
-    text += (tc.items || []).map(it => it.str).join(' ') + '\n';
+    out.push(...pdfLinesFromItems(tc.items));
   }
-  return { doc, text };
+  return { doc, text: out.join('\n') };
 }
 async function scanPdfPageImage(jsPdf, doc) {
   const page = await doc.getPage(1);
@@ -1875,12 +1907,32 @@ async function handleScanFile(file) {
   }
 }
 
-/* ---- teksti → fusha ---- */
+/* ---- teksti → fusha ----
+   `knownSuppliers` vjen nga lista e furnitorëve; tekstet e faturave shqipe
+   (bills.al, E-Fiskal, NIPT…) kanë etiketa të njohura: “Emri i Shitesit”,
+   “Nr i Fatures”, “Data:”, “Monedha:”, dhe rreshta me kolona
+   “sasi · çmim · vlerë pa TVSH · TVSH · vlerë me TVSH”. */
+const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
+const UNIT_WORDS = /^(?:cope|cop[ëe]|cop[eë]|cop|set|kg|kile|kilogram|gr|g|ml|lit[eë]r|litra|l|m²|m2|m|kuti|thes|kov[ëe]|palet[ëe]?|pak|or[eë])$/i;
+const CUR_WORDS = /^(?:€|eur|euro|all|lek[ëe]?|l\.?)$/i;
+const normUnit = u => {
+  const t = String(u || '').toLowerCase().replace(/\.$/, '');
+  if (/^cop/.test(t)) return 'copë';
+  if (/^(kile|kilogram|kg)$/.test(t)) return 'kg';
+  if (/^(lit[eë]r|litra|l)$/.test(t)) return 'l';
+  if (/^gr/.test(t)) return 'gr';
+  if (/^m²|^m2$/.test(t)) return 'm²';
+  if (/^palet/.test(t)) return 'paletë';
+  if (/^kont|^kuti/.test(t)) return 'kuti';
+  return t;
+};
+
 function parseInvoice(raw, knownSuppliers) {
   const text = String(raw || '').replace(/\r/g, '').replace(/\u00a0/g, ' ');
   const lines = text.split('\n').map(l => l.replace(/[ \t]+/g, ' ').trim()).filter(Boolean);
   const joined = lines.join('\n');
-  const decComma = /,\d{1,2}(?!\d)/.test(joined);      // 1.234,56 → presje dhjetore
+  const flat = lines.join(' ');
+  const decComma = /,\d{1,2}(?!\d)/.test(flat);      // 1.234,56 → presje dhjetore
 
   const num = (v) => {
     if (v == null) return null;
@@ -1895,92 +1947,164 @@ function parseInvoice(raw, knownSuppliers) {
     } else if (ld > -1) {
       const parts = t.split('.');
       if (parts.length > 2) t = t.replace(/\./g, '');
-      else if (parts[1] && parts[1].length === 3 && t.length > 4 && !decComma) t = t.replace('.', '');
+      /* “1.234” = mijëshe vetëm kur s’ka presje dhjetore dhe pjesa e plotë s’është 0
+         (“0.375” është thyesë, jo 375!). */
+      else if (parts[1] && parts[1].length === 3 && t.length > 4 && !decComma && parts[0] !== '0') t = t.replace('.', '');
     }
     const n = parseFloat(t);
     return isFinite(n) ? (neg ? -n : n) : null;
   };
 
-  /* data: ISO ose 27.10.2026 / 27/10/2026 */
+  /* ---------- data: etiketa “Data” e para, afati i pagesës nuk merret ---------- */
+  const dmyToIso = (a, b, y) => {
+    y = y.length === 2 ? '20' + y : y;
+    let d = +a, m = +b;
+    if (m > 12 && d <= 12) { const t = d; d = m; m = t; }
+    if (!(d >= 1 && d <= 31 && m >= 1 && m <= 12)) return null;
+    return y + '-' + String(m).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  };
+  /* Kërkon një datë; `pack` bashkon hapësirat brenda numrave (OCR: “2 7 . 1 0”). */
+  function findDate(src, pack) {
+    const t = pack ? src.replace(/(\d)\s+(?=\d)/g, '$1').replace(/\s*([.\/-])\s*/g, '$1') : src;
+    const iso = t.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/);
+    if (iso) return iso[1] + '-' + String(+iso[2]).padStart(2, '0') + '-' + String(+iso[3]).padStart(2, '0');
+    const dmy = t.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})(?!\d)/);
+    return dmy ? dmyToIso(dmy[1], dmy[2], dmy[3]) : null;
+  }
   let date = null;
-  const tight = joined.replace(/(\d)\s+(?=\d)/g, '$1').replace(/\s*([.\/-])\s*/g, '$1');
-  const iso = joined.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/) || tight.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/);
-  const dmy = joined.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/) || tight.match(/(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/);
-  if (iso) date = iso[1] + '-' + String(+iso[2]).padStart(2, '0') + '-' + String(+iso[3]).padStart(2, '0');
-  else if (dmy) {
-    let y = dmy[3].length === 2 ? '20' + dmy[3] : dmy[3];
-    let a = +dmy[1], b = +dmy[2];
-    if (b > 12 && a <= 12) { const t = a; a = b; b = t; }   // amerikanisht 10/27/2026
-    if (a >= 1 && a <= 31 && b >= 1 && b <= 12) date = y + '-' + String(b).padStart(2, '0') + '-' + String(a).padStart(2, '0');
+  const labelRx = /(?:data|dat[ëe]|date|lëshuar|leshuar|issued)[^\d\n]{0,12}(\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}|20\d{2}-\d{1,2}-\d{1,2})/i;
+  const labeled = joined.match(labelRx) || joined.replace(/(\d)\s+(?=\d)/g, '$1').match(labelRx);
+  if (labeled) {
+    const v = labeled[1];
+    const iso = v.match(/^(20\d{2})-(\d{1,2})-(\d{1,2})$/);
+    const dmy = v.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})$/);
+    if (iso) date = iso[1] + '-' + String(+iso[2]).padStart(2, '0') + '-' + String(+iso[3]).padStart(2, '0');
+    else if (dmy) date = dmyToIso(dmy[1], dmy[2], dmy[3]);
   }
+  if (!date) date = findDate(lines.slice(0, 8).join(' '), false);        // koka e faturës
+  if (!date) date = findDate(lines.slice(0, 8).join(' '), true);
+  if (!date) date = findDate(flat.replace(/afati[^\n]{0,30}/gi, ' '), false);
+  if (!date) date = findDate(flat.replace(/afati[^\n]{0,30}/gi, ' '), true);
 
-  /* numri i faturës */
+  /* ---------- numri i faturës ---------- */
   let invoice = null;
-  const invRe = /(?:fatur[aë]|invoice|nr[.\s]*fature|fatura\s*nr\.?)[^\n\d]{0,24}?([A-Z]{0,4}[-/ ]?\d[\dA-Za-z\-\/]{1,18})/i;
-  const mi = joined.match(invRe);
-  if (mi) invoice = mi[1].replace(/\s+/g, '').trim();
-  if (!invoice) {                                     // “Nr. 12345” / “F-2026-0412” në krye
-    const m2 = joined.match(/\b([A-Z]{1,3}-\d{1,4}(?:[-/]\d{1,6})?)\b/);
-    if (m2) invoice = m2[1];
+  const invPatterns = [
+    /nr[.\s]*(?:i\s*)?fatur[aëe]s?[^\d\n]{0,20}([\w\-\/]{2,24})/i,          // “Nr i Fatures: 2683/2026”
+    /fatur[aëe]s?[^\d\n]{0,24}nr[.\s:]{0,3}([\w\-\/]{2,24})/i,               // “FATURË TATIMORE Nr. F-2026-0412”
+    /(?:invoice|bill)\s*(?:no\.?|nr\.?)?[^\d\n]{0,12}?([\w\-\/]{2,24})/i,
+    /\b([A-Z]{1,4}-\d{1,5}(?:[-/]\d{1,6})?)\b/,
+    /\b(\d{2,7}\/\d{2,4})\b/                                                  // bills.al: 2683/2026
+  ];
+  for (const rx of invPatterns) {
+    const m = flat.match(rx);
+    if (!m) continue;
+    const v = String(m[1]).replace(/\s+/g, '').trim();
+    if (!v || /^\d{1,2}[.\/-]\d{1,2}[.\/-]\d{2,4}$/.test(v)) continue;        // jo datë
+    if (/^(?:data|date|ora|time)$/i.test(v)) continue;
+    invoice = v; break;
   }
 
-  /* monedha */
+  /* ---------- monedha ---------- */
   let currency = null;
-  if (/€|\beur\b|euro/i.test(joined)) currency = 'EUR';
-  else if (/lek[ëe]?|\ball\b|\bl\.?\b/i.test(joined)) currency = 'ALL';
+  const curLabel = flat.match(/(?:monedha|currency|valuta)\s*:?\s*([A-Z]{3}|€)/i);
+  if (curLabel) currency = /EUR|€/i.test(curLabel[1]) ? 'EUR' : (/ALL|LEK/i.test(curLabel[1]) ? 'ALL' : null);
+  if (!currency) {
+    if (/€|\beur\b|euro/i.test(flat)) currency = 'EUR';
+    else if (/lek[ëe]?|\ball\b|\bl\.?\b/i.test(flat)) currency = 'ALL';
+  }
 
-  /* furnitori: i njohur > etiketë > rreshti i parë i arsyeshëm */
+  /* ---------- furnitori ---------- */
   const known = (knownSuppliers || Store.data.suppliers.map(s => s.name)).filter(Boolean);
   let supplier = null;
-  for (const k of known) { if (k && norm(joined).includes(norm(k))) { supplier = k; break; } }
+  for (const k of known) { if (k && norm(flat).includes(norm(k))) { supplier = k; break; } }
   if (!supplier) {
-    const ms = joined.match(/(?:furnitor[^\n:]{0,14}|shit[eë]s[^\n:]{0,10}|shoq[eë]ri[^\n:]{0,10}|company|seller)\s*[:\-]\s*([^\n]{3,60})/i);
-    if (ms) supplier = ms[1];
-    else {
-      supplier = lines.find(l => /[A-Za-zËëÇçÀ-ÿ]{3}/.test(l) &&
-        !/fatur|invoice|dat[ëe]|date|nr\.|total|tvsh|vat|tel|email|@|www\./i.test(l)) || '';
-    }
-    supplier = String(supplier).replace(/[|;].*$/, '').replace(/\s{2,}/g, ' ').trim().slice(0, 60);
+    const lbl = /(?:emri\s*i\s*)?(?:shit[eë]sit|shit[eë]s|furnitorit|furnitor|furnizuesit|furnizues|seller|supplier|company|shoq[eë]ria)[^\n:]{0,18}:\s*([^\n]{3,90})/i;
+    const m = joined.match(lbl) || flat.match(lbl);
+    if (m) supplier = m[1];
+    else supplier = lines.find(l => /[A-Za-zËëÇçÀ-ÿ]{3}/.test(l) &&
+      !/fatur|invoice|dat[ëe]|date|nr\.|total|tvsh|vat|tel|email|@|www\.|bills\.al|qr/i.test(l)) || '';
+    supplier = String(supplier)
+      .split(/emri\s*i\s*bler[eë]sit|adresa|nipt|nivf|numri\s*i\s*identifikimit|tel|email|@/i)[0]
+      .replace(/[|;].*$/, '').replace(/\s{2,}/g, ' ').replace(/^[^\wËëÇçÀ-ÿ]+/, '').trim().slice(0, 60);
   }
 
-  /* rreshtat: emër + numra në fund (sasi · çmim [· total]) */
-  const unitRx = /(?:^|\s)(cop[eë]|set|kg|kile|m²|m2|m|lit[eë]r|ml|gr|g|kuti|thes|kov[eë]|pak|palet|or[eë])\b\.?/i;
-  const numRx = /^-?\d{1,3}(?:[ .]\d{3})*(?:[.,]\d{1,3})?$|^-?\d+(?:[.,]\d{1,3})?$/;
-  const skipRx = /total|n[eë]ntotal|subtotal|tvsh|\bvat\b|zbritje|discount|transport|firm[ëe]|firma|pages|paguaj|iban|tel|email|@|www\.|klient|customer|adres/i;
+  /* ---------- rreshtat ----------
+     Nga fundi i rreshtit merren numrat; pastaj provohen formatet që “bëjnë
+     matematikë”: sasi×çmim=total · sasi×çmim=neto, neto+TVSH=bruto. */
+  const skipRx = /total|n[eë]ntotal|subtotal|tvsh|\bvat\b|zbritje|discount|transport|firm[ëe]|firma|pages|paguaj|iban|swift|tel|email|@|www\.|klient|customer|adres|nipt|nivf|ns|referenca|operator|banka|afati|kursi|monedha|or[aë]\s*:|shenim|sh[eë]nim|qr|fiskal|shitesi|bleresi|transportuesi|logo|faqe/i;
+  const eq = (a, b, tol = 0.02) => a != null && b != null && Math.abs(a - b) <= Math.max(0.03, Math.abs(b) * tol);
+
+  /* Çmimi për njësi: 2 decimale; nëse kështu totali nuk del, 4 (0.375 → 0.375). */
+  function bestPrice(net, qty) {
+    if (!(qty > 0)) return round2(net);
+    const exact = net / qty, p2 = round2(exact);
+    return Math.abs(p2 * qty - net) <= Math.max(0.005, Math.abs(net) * 0.0005) ? p2 : Math.round(exact * 10000) / 10000;
+  }
+
+  function pickRow(nums) {                // nums: numrat e rreshtit, në rend
+    const n = nums.length;
+    const tryQtyPrice = (q, net, price) => (q > 0 && price >= 0 && (net == null || eq(q * price, net))) ? { qty: q, price } : null;
+    if (n >= 5) {                         // sasi · çmim · neto · TVSH · bruto
+      const [q, p, net, vat, gross] = nums.slice(n - 5);
+      if (q > 0 && eq(q * p, net) && eq(net + vat, gross) && p >= 0) {
+        return { qty: q, price: bestPrice(net, q) };
+      }
+    }
+    if (n >= 4) {                         // sasi · çmim · neto · TVSH
+      const [q, p, net, vat] = nums.slice(n - 4);
+      if (q > 0 && eq(q * p, net) && vat >= 0) return { qty: q, price: bestPrice(net, q) };
+      if (q > 0 && eq(q * p, net)) return { qty: q, price: bestPrice(net, q) };
+    }
+    if (n >= 3) {                         // sasi · çmim · total
+      const [q, p, tot] = nums.slice(n - 3);
+      const r = tryQtyPrice(q, tot, p);
+      if (r) return { qty: q, price: round2(p) };
+      if (q > 0 && eq(q * p, tot)) return { qty: q, price: round2(p) };
+    }
+    if (n >= 2) {                         // sasi · çmim
+      const [q, p] = nums.slice(n - 2);
+      if (q > 0 && p >= 0) return { qty: q, price: round2(p) };
+    }
+    return null;
+  }
+
   const rows = [];
-  lines.forEach((line, idx) => {
+  lines.forEach(line => {
     if (skipRx.test(line)) return;
     const toks = line.split(' ').filter(Boolean);
     if (toks.length < 2) return;
-    const tail = []; let i = toks.length - 1;
-    while (i >= 0 && tail.length < 4) {
+    const nums = []; let cut = toks.length;
+    for (let i = toks.length - 1; i >= 0 && nums.length < 6; i--) {
       const t = toks[i];
-      if (numRx.test(t)) { tail.unshift(t); i--; }
-      else if (/^(?:€|eur|all|lek[ëe]?|l|x|×|cop[ëe]|set|kg|kile|gr|g|ml|lit[eë]r|m²|m2|m|kuti|thes|kov[ëe]|pak)$/i.test(t)) { i--; }
-      else break;
+      const v = /^[-+]?[\d.,]+$/.test(t) ? num(t) : null;
+      if (v != null) { nums.unshift(v); cut = i; }
+      else if (UNIT_WORDS.test(t) || CUR_WORDS.test(t)) { cut = i; }   // njësi/monedhë midis numrave
+      else if (nums.length) break;
+      else if (toks.length > 2) { /* vazhdo: emri mund të përmbajë numra si “4x40” */ }
     }
-    if (tail.length < 2) return;
-    let name = toks.slice(0, i + 1).join(' ').replace(/^\d{1,3}[.)]?\s+/, '').replace(/[|;]+/g, ' ').trim();
+    if (nums.length < 2) return;
+    const picked = pickRow(nums);
+    if (!picked) return;
+
+    let name = toks.slice(0, cut).join(' ')
+      .replace(/^\d{1,4}[.)]?\s+/, '')                 // nr. i rreshtit
+      .replace(/^\d{2,7}\s+/, '')                      // kodi i artikullit
+      .replace(/[|;]+/g, ' ')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
     if (name.length < 2 || !/[A-Za-zËëÇçÀ-ÿ]{2}/.test(name)) return;
 
-    let qty = null, price = null;
-    const a = num(tail[0]), b = num(tail[1]), c = tail.length >= 3 ? num(tail[2]) : null;
-    if (a != null && b != null && c != null && tail.length >= 3) {
-      const dQty = Math.abs(c - a * b), dPrice = Math.abs(c - b * a);   // a×b = total ?
-      if (dQty <= dPrice) { qty = a; price = b; }
-      else { qty = b; price = c; }                    // emër çmim total
-    } else if (a != null && b != null) {
-      qty = a > 0 ? a : null; price = b;              // sasi + çmim
-    } else return;
-    if (qty == null || qty <= 0 || price == null) return;
-
-    const um = line.match(unitRx);
-    const unit = um ? um[1].toLowerCase().replace('cope', 'copë').replace('litr', 'litër').replace('kile', 'kg') : 'copë';
-    rows.push({ product: name.slice(0, 80), qty: String(qty), unit, price: String(price) });
+    const um = line.match(/\s(?:cope|cop[ëe]|set|kg|kile|gr|ml|lit[eë]r|litra|m²|m2|m|kuti|thes|kov[ëe]|palet[ëe]?|pak)\b/i);
+    rows.push({
+      product: name.slice(0, 80),
+      qty: String(picked.qty),
+      unit: um ? normUnit(um[0].trim()) : 'copë',
+      price: String(picked.price)
+    });
   });
 
   const totalLine = (() => {
-    const m = joined.match(/(?:total|gjithsej|për\s*pages[ëe]?)[^\n\d]{0,16}([\d.,\s]{2,16})/i);
+    const m = flat.match(/(?:total|gjithsej|për\s*pages[ëe]?)[^\d\n]{0,16}([\d][\d.,]{1,15})/i);
     return m ? num(m[1]) : null;
   })();
 
@@ -2010,6 +2134,12 @@ function renderScanRes(p) {
       <input class="field num" data-f="price" value="${esc(r.price)}" inputmode="decimal" aria-label="Çmimi ${i + 1}">
       <button type="button" class="lx" data-scanrm="${i}" aria-label="Hiq rreshtin ${i + 1}">✕</button>
     </div>`).join('');
+  /* Shuma e rreshtave kundrejt totalit të lexuar në faturë (toleron centat). */
+  let sumWarn = '';
+  const rowsSum = (p.rows || []).reduce((s, r) => s + (+r.qty || 0) * (+r.price || 0), 0);
+  if (p.total != null && rowsSum > 0 && Math.abs(rowsSum - p.total) > Math.max(1, p.total * 0.01)) {
+    sumWarn = `<div class="scanwarn"><b>Kujdes:</b> shuma e rreshtave (${esc(money(rowsSum, p.currency || 'ALL'))}) nuk përputhet me totalin e faturës (${esc(money(p.total, p.currency || 'ALL'))}). Kontrollo një rresht që mungon ose një çmim.</div>`;
+  }
   const bad = [];
   if (!p.supplier) bad.push('furnitori');
   if (!p.invoice) bad.push('numri i faturës');
@@ -2035,6 +2165,7 @@ function renderScanRes(p) {
     </div>
     <div class="gridfoot"><button type="button" class="btn ghost sm" data-scandd="1">+ Shto artikull</button></div>
     ${bad.length ? `<div class="scanwarn"><b>Nuk u lexua:</b> ${esc(bad.join(', '))}. Plotësoji me dorë më poshtë ose te formulari.</div>` : ''}
+    ${sumWarn}
     ${p.total != null ? `<p style="font-size:13px;color:var(--muted);margin:8px 0 0">Totali i lexuar në faturë: <b>${esc(money(p.total, p.currency || 'ALL'))}</b> — kontrolloje me shumën e rreshtave.</p>` : ''}
     <details style="margin-top:10px"><summary style="cursor:pointer;font-size:13px;color:var(--muted)">Teksti i lexuar (për kontroll)</summary><div class="scantext">${esc(p.text.slice(0, 3000))}</div></details>
     ${SCAN && SCAN.file && /^image\//i.test(SCAN.file.type || '') ? `<img class="scanimg" alt="Fatura e skanuar" src="${URL.createObjectURL(SCAN.file)}">` : ''}
